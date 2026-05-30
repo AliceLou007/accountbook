@@ -6,13 +6,342 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
-    <height>600</height>
+    <width>950</width>
+    <height>850</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Widget</string>
   </property>
+  <widget class="QStackedWidget" name="stackedWidget">
+   <property name="geometry">
+    <rect>
+     <x>250</x>
+     <y>0</y>
+     <width>700</width>
+     <height>850</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">#stackedEidget{
+background-color: #F8F9FA;
+}</string>
+   </property>
+   <property name="currentIndex">
+    <number>0</number>
+   </property>
+   <widget class="QWidget" name="Homepage">
+    <widget class="QFrame" name="frame">
+     <property name="geometry">
+      <rect>
+       <x>5</x>
+       <y>100</y>
+       <width>690</width>
+       <height>200</height>
+      </rect>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">#frame {
+	border-image: url(:/bg_balance.png);
+    border-radius: 16px;
+}</string>
+     </property>
+     <property name="frameShape">
+      <enum>QFrame::Shape::StyledPanel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Shadow::Raised</enum>
+     </property>
+     <widget class="QLabel" name="lblBalanceAmount">
+      <property name="geometry">
+       <rect>
+        <x>60</x>
+        <y>100</y>
+        <width>241</width>
+        <height>51</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">QLabel {
+    font-family: &quot;Helvetica Neue&quot;, Helvetica, Inter, Roboto, &quot;Microsoft YaHei&quot;, sans-serif;
+    font-size: 30px;         
+    font-weight: 700;       
+    color: #1a1a1a;          
+}</string>
+      </property>
+      <property name="text">
+       <string>TextLabel</string>
+      </property>
+     </widget>
+    </widget>
+    <widget class="QFrame" name="frame_2">
+     <property name="geometry">
+      <rect>
+       <x>5</x>
+       <y>315</y>
+       <width>690</width>
+       <height>390</height>
+      </rect>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">#frame_2 {
+    background-color: #FFFFFF; /* 纯白背景 */
+    border: 1px solid #F0F0F0; /* 极淡的灰色边框 */
+    border-radius: 16px;
+}</string>
+     </property>
+     <property name="frameShape">
+      <enum>QFrame::Shape::StyledPanel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Shadow::Raised</enum>
+     </property>
+     <widget class="QLabel" name="lblOutcomeAmount">
+      <property name="geometry">
+       <rect>
+        <x>560</x>
+        <y>150</y>
+        <width>120</width>
+        <height>120</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">QLabel {
+    font-family: &quot;Helvetica Neue&quot;, Helvetica, Inter, Roboto, &quot;Microsoft YaHei&quot;, sans-serif;
+    font-size: 16px;         
+    font-weight: 600;       
+    color: #1a1a1a;
+}</string>
+      </property>
+      <property name="text">
+       <string>TextLabel</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="lblCount">
+      <property name="geometry">
+       <rect>
+        <x>560</x>
+        <y>270</y>
+        <width>120</width>
+        <height>120</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">QLabel {
+    font-family: &quot;Helvetica Neue&quot;, Helvetica, Inter, Roboto, &quot;Microsoft YaHei&quot;, sans-serif;
+    font-size: 16px;         
+    font-weight: 600;       
+    color: #1a1a1a;
+}</string>
+      </property>
+      <property name="text">
+       <string>TextLabel</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="lblIncomeAmount">
+      <property name="geometry">
+       <rect>
+        <x>560</x>
+        <y>30</y>
+        <width>120</width>
+        <height>120</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">QLabel {
+    font-family: &quot;Helvetica Neue&quot;, Helvetica, Inter, Roboto, &quot;Microsoft YaHei&quot;, sans-serif;
+    font-size: 16px;         
+    font-weight: 600;       
+    color: #1a1a1a;
+}</string>
+      </property>
+      <property name="text">
+       <string>TextLabel</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label">
+      <property name="geometry">
+       <rect>
+        <x>40</x>
+        <y>10</y>
+        <width>111</width>
+        <height>31</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">QLabel {
+    font-family: &quot;Helvetica Neue&quot;, Helvetica, Inter, Roboto, &quot;Microsoft YaHei&quot;, sans-serif;
+    font-size: 16px;            
+    color: #1a1a1a;
+}</string>
+      </property>
+      <property name="text">
+       <string>收支概览</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_2">
+      <property name="geometry">
+       <rect>
+        <x>100</x>
+        <y>30</y>
+        <width>120</width>
+        <height>120</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">QLabel {
+    font-family: &quot;Helvetica Neue&quot;, Helvetica, Inter, Roboto, &quot;Microsoft YaHei&quot;, sans-serif;
+    font-size: 16px;            
+    color: #1a1a1a;
+}</string>
+      </property>
+      <property name="text">
+       <string>本月总收入</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_3">
+      <property name="geometry">
+       <rect>
+        <x>100</x>
+        <y>150</y>
+        <width>120</width>
+        <height>120</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">QLabel {
+    font-family: &quot;Helvetica Neue&quot;, Helvetica, Inter, Roboto, &quot;Microsoft YaHei&quot;, sans-serif;
+    font-size: 16px;            
+    color: #1a1a1a;
+}</string>
+      </property>
+      <property name="text">
+       <string>本月总支出</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_4">
+      <property name="geometry">
+       <rect>
+        <x>100</x>
+        <y>270</y>
+        <width>120</width>
+        <height>120</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">QLabel {
+    font-family: &quot;Helvetica Neue&quot;, Helvetica, Inter, Roboto, &quot;Microsoft YaHei&quot;, sans-serif;
+    font-size: 16px;            
+    color: #1a1a1a;
+}</string>
+      </property>
+      <property name="text">
+       <string>本月共记账</string>
+      </property>
+     </widget>
+    </widget>
+    <widget class="QFrame" name="frame_3">
+     <property name="geometry">
+      <rect>
+       <x>5</x>
+       <y>720</y>
+       <width>690</width>
+       <height>120</height>
+      </rect>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">#frame_3 {
+    background-color: #FFFFFF; /* 纯白背景 */
+    border: 1px solid #F0F0F0; /* 极淡的灰色边框 */
+    border-radius: 16px;
+}</string>
+     </property>
+     <property name="frameShape">
+      <enum>QFrame::Shape::StyledPanel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Shadow::Raised</enum>
+     </property>
+     <widget class="QPushButton" name="btnOpenAdd">
+      <property name="geometry">
+       <rect>
+        <x>90</x>
+        <y>30</y>
+        <width>531</width>
+        <height>51</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">#btnOpenAdd {
+    background-color: #8c1515; /* 经典的北大红背景 */
+    color: white;              /* 白色文字 */
+    border-radius: 12px;       /* 圆角效果，数值越大越圆润 */
+    font-size: 16px;           /* 字体放大 */
+    font-weight: bold;         /* 字体加粗 */
+}
+
+/* 鼠标悬停在按钮上时，颜色稍微变深一点，增加交互感 */
+#btnOpenAdd:hover {
+    background-color: #a01a1a;
+}
+
+/* 鼠标点下去的一瞬间，按钮往下沉一下 */
+#btnOpenAdd:pressed {
+    background-color: #701010;
+    padding-top: 2px;
+    padding-left: 2px;
+}</string>
+      </property>
+      <property name="text">
+       <string>添加收支记录</string>
+      </property>
+     </widget>
+    </widget>
+   </widget>
+   <widget class="QWidget" name="page"/>
+  </widget>
+  <widget class="QWidget" name="sideBar" native="true">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>250</width>
+     <height>851</height>
+    </rect>
+   </property>
+   <property name="maximumSize">
+    <size>
+     <width>250</width>
+     <height>16777215</height>
+    </size>
+   </property>
+   <widget class="QPushButton" name="btnHome">
+    <property name="geometry">
+     <rect>
+      <x>0</x>
+      <y>250</y>
+      <width>250</width>
+      <height>50</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>主页</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="btnHistory">
+    <property name="geometry">
+     <rect>
+      <x>0</x>
+      <y>300</y>
+      <width>250</width>
+      <height>50</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>历史</string>
+    </property>
+   </widget>
+  </widget>
  </widget>
  <resources/>
  <connections/>

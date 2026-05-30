@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>950</width>
-    <height>850</height>
+    <width>450</width>
+    <height>400</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,50 +16,50 @@
   <widget class="QDateEdit" name="dateEdit">
    <property name="geometry">
     <rect>
-     <x>30</x>
-     <y>10</y>
-     <width>110</width>
-     <height>25</height>
+     <x>50</x>
+     <y>20</y>
+     <width>241</width>
+     <height>31</height>
     </rect>
    </property>
   </widget>
   <widget class="QLineEdit" name="lineEditCategory">
    <property name="geometry">
     <rect>
-     <x>140</x>
-     <y>90</y>
-     <width>113</width>
-     <height>25</height>
+     <x>150</x>
+     <y>125</y>
+     <width>251</width>
+     <height>31</height>
     </rect>
    </property>
   </widget>
   <widget class="QLineEdit" name="lineEditAmount">
    <property name="geometry">
     <rect>
-     <x>140</x>
-     <y>130</y>
-     <width>113</width>
-     <height>25</height>
+     <x>150</x>
+     <y>190</y>
+     <width>251</width>
+     <height>31</height>
     </rect>
    </property>
   </widget>
   <widget class="QLineEdit" name="lineEditComment">
    <property name="geometry">
     <rect>
-     <x>140</x>
-     <y>170</y>
-     <width>113</width>
-     <height>25</height>
+     <x>150</x>
+     <y>255</y>
+     <width>251</width>
+     <height>31</height>
     </rect>
    </property>
   </widget>
   <widget class="QDialogButtonBox" name="buttonBox">
    <property name="geometry">
     <rect>
-     <x>30</x>
-     <y>220</y>
-     <width>193</width>
-     <height>28</height>
+     <x>120</x>
+     <y>330</y>
+     <width>201</width>
+     <height>51</height>
     </rect>
    </property>
    <property name="standardButtons">
@@ -69,10 +69,10 @@
   <widget class="QComboBox" name="comboBoxType">
    <property name="geometry">
     <rect>
-     <x>30</x>
-     <y>50</y>
-     <width>83</width>
-     <height>25</height>
+     <x>50</x>
+     <y>70</y>
+     <width>101</width>
+     <height>31</height>
     </rect>
    </property>
    <item>
@@ -89,10 +89,10 @@
   <widget class="QLabel" name="label">
    <property name="geometry">
     <rect>
-     <x>40</x>
-     <y>100</y>
-     <width>69</width>
-     <height>19</height>
+     <x>50</x>
+     <y>125</y>
+     <width>61</width>
+     <height>31</height>
     </rect>
    </property>
    <property name="text">
@@ -102,10 +102,10 @@
   <widget class="QLabel" name="label_2">
    <property name="geometry">
     <rect>
-     <x>40</x>
-     <y>140</y>
-     <width>69</width>
-     <height>19</height>
+     <x>50</x>
+     <y>190</y>
+     <width>71</width>
+     <height>31</height>
     </rect>
    </property>
    <property name="text">
@@ -115,10 +115,10 @@
   <widget class="QLabel" name="label_3">
    <property name="geometry">
     <rect>
-     <x>40</x>
-     <y>180</y>
-     <width>69</width>
-     <height>19</height>
+     <x>48</x>
+     <y>255</y>
+     <width>71</width>
+     <height>31</height>
     </rect>
    </property>
    <property name="text">

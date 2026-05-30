@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/">
+        <file>bg_balance.png</file>
+    </qresource>
+</RCC>

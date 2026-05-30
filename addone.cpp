@@ -1,8 +1,10 @@
 #include "addone.h"
 #include "ui_addone.h"
-#include <fstream>   // 引入标准文件流，用于写 data.txt
 #include <QMessageBox>
 #include <QDebug>
+#include <QFile>
+#include <QTextStream>
+#include <QCoreApplication>
 
 AddOne::AddOne(QWidget *parent) :
     QDialog(parent), // 父类初始化
@@ -26,9 +28,11 @@ AddOne::AddOne(QWidget *parent) :
         "}"
         );
 
-    // 1. 设置弹窗标题和固定大小（防止弹窗变形）
-    this->setWindowTitle("添加收支记录");
-    this->setFixedSize(400, 350); // 你可以根据界面控件调整这个大小
+    // 1. 设置固定大小（防止弹窗变形）
+    this->setFixedSize(400, 350);
+
+    // 这一行会让弹窗内所有控件的文字都变成 16px，并使用微软雅黑字体
+    this->setStyleSheet("font-size: 16px; font-family: 'Microsoft YaHei';");
 
     // 2. 自动化加载：在程序启动时，自动往下拉框塞入“支出”和“收入”
     ui->comboBoxType->clear();
@@ -44,30 +48,36 @@ AddOne::~AddOne()
 // 当点击 OK 按钮时触发
 void AddOne::on_buttonBox_accepted()
 {
-    AccountRecord rec;
+    // 1. 检查输入合法性（先做检查，如果不合法直接拦截，省去后面所有无用功）
+    QString category = ui->lineEditCategory->text().trimmed();
+    double amount = ui->lineEditAmount->text().toDouble();
 
-    // 1. 抓取界面数据（保持不变）
-    rec.date = ui->dateEdit->date().toString("yyyy-MM-dd").toStdString();
-    rec.type = ui->comboBoxType->currentText().toLocal8Bit().constData();
-    rec.category = ui->lineEditCategory->text().toLocal8Bit().constData();
-    rec.amount = ui->lineEditAmount->text().toDouble();
-    rec.comment = ui->lineEditComment->text().toLocal8Bit().constData();
-
-    // 防御性拦截
-    if (rec.category.empty() || rec.amount <= 0) {
+    if (category.isEmpty() || amount <= 0) {
         QMessageBox::warning(this, "提示", "请填写完整的分类和正确的金额！");
-        return;
+        return; // 被拦截，不关闭弹窗，不写入文件
     }
 
-    // 2. 写入文件（保持不变）
-    std::ofstream outFile("data.txt", std::ios::app);
-    if (outFile.is_open()) {
-        outFile << rec.date << "\t"
-                << rec.type << "\t"
-                << rec.category << "\t"
-                << rec.amount << "\t"
-                << rec.comment << "\n";
-        outFile.close();
+    // 2. 使用 Qt 的组件进行写入，彻底消灭中文乱码和路径错位问题
+    // 使用 applicationDirPath() 确保主界面和弹窗读写的是【同一个绝对路径】下的 data.txt
+    QString filePath = QCoreApplication::applicationDirPath() + "/data.txt";
+    QFile file(filePath);
+
+    // 以追加模式(Append)和文本模式(Text)打开
+    if (file.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
+        QTextStream out(&file);
+
+        // 用逗号 `,` 分隔。备注如果为空，默认写“无”
+        QString comment = ui->lineEditComment->text().trimmed();
+        if (comment.isEmpty()) comment = "无";
+
+        // 啪！整整齐齐写进文件，Qt 会在后台自动处理好所有中文编码，绝对不会乱码
+        out << ui->dateEdit->date().toString("yyyy-MM-dd") << ","
+            << ui->comboBoxType->currentText() << ","
+            << category << ","
+            << amount << ","
+            << comment << "\n";
+
+        file.close();
     } else {
         QMessageBox::critical(this, "错误", "无法打开或创建账本文件！");
         return;
