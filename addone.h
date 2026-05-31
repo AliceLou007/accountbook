@@ -3,6 +3,7 @@
 
 #include <QDialog> // 改为继承 QDialog
 #include <string>
+#include <QStringList>
 
 namespace Ui {
 class AddOne;
@@ -31,6 +32,7 @@ private slots:
 
 private:
     Ui::AddOne *ui;
+    QStringList getTopThreeRemarks();
 };
 
 #endif // ADDONE_H

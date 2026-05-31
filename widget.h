@@ -2,6 +2,7 @@
 #define WIDGET_H
 
 #include <QWidget>
+#include <QPushButton>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class Widget; }
@@ -21,6 +22,9 @@ public:
 private slots:
     void on_btnHome_clicked();
     void on_btnHistory_clicked();
+    void on_btnCount_clicked();
+    void on_btnBudget_clicked();
+    void on_btnManagement_clicked();
 
 private:
     Ui::Widget *ui;
@@ -43,5 +47,8 @@ private:
     // 4. 核心功能函数
     void loadAndCalculateAllData(); // 读取整个文件并分类统计到 Map 中
     void updateHomeUi(const QString &yearMonth); // 专门负责把某个月的数据刷到 UI 上
+
+    //侧边栏状态更新函数
+    void updateSidebarStyle(QPushButton* activeBtn);
 };
 #endif // WIDGET_H

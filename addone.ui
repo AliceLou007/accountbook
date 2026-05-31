@@ -23,31 +23,11 @@
     </rect>
    </property>
   </widget>
-  <widget class="QLineEdit" name="lineEditCategory">
-   <property name="geometry">
-    <rect>
-     <x>150</x>
-     <y>125</y>
-     <width>251</width>
-     <height>31</height>
-    </rect>
-   </property>
-  </widget>
   <widget class="QLineEdit" name="lineEditAmount">
    <property name="geometry">
     <rect>
      <x>150</x>
      <y>190</y>
-     <width>251</width>
-     <height>31</height>
-    </rect>
-   </property>
-  </widget>
-  <widget class="QLineEdit" name="lineEditComment">
-   <property name="geometry">
-    <rect>
-     <x>150</x>
-     <y>255</y>
      <width>251</width>
      <height>31</height>
     </rect>
@@ -66,7 +46,7 @@
     <set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set>
    </property>
   </widget>
-  <widget class="QComboBox" name="comboBoxType">
+  <widget class="QComboBox" name="comboType">
    <property name="geometry">
     <rect>
      <x>50</x>
@@ -125,15 +105,35 @@
     <string>备注</string>
    </property>
   </widget>
+  <widget class="QComboBox" name="comboCategory">
+   <property name="geometry">
+    <rect>
+     <x>150</x>
+     <y>130</y>
+     <width>251</width>
+     <height>31</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QComboBox" name="lineEditComment">
+   <property name="geometry">
+    <rect>
+     <x>150</x>
+     <y>254</y>
+     <width>251</width>
+     <height>31</height>
+    </rect>
+   </property>
+  </widget>
   <zorder>dateEdit</zorder>
-  <zorder>lineEditCategory</zorder>
   <zorder>lineEditAmount</zorder>
-  <zorder>lineEditComment</zorder>
   <zorder>buttonBox</zorder>
   <zorder>label</zorder>
   <zorder>label_2</zorder>
   <zorder>label_3</zorder>
-  <zorder>comboBoxType</zorder>
+  <zorder>comboType</zorder>
+  <zorder>comboCategory</zorder>
+  <zorder>lineEditComment</zorder>
  </widget>
  <resources/>
  <connections/>

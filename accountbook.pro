@@ -9,14 +9,17 @@ CONFIG += c++17
 SOURCES += \
     addone.cpp \
     main.cpp \
+    record.cpp \
     widget.cpp
 
 HEADERS += \
     addone.h \
+    record.h \
     widget.h
 
 FORMS += \
     addone.ui \
+    record.ui \
     widget.ui
 
 TRANSLATIONS += \

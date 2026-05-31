@@ -35,9 +35,28 @@ AddOne::AddOne(QWidget *parent) :
     this->setStyleSheet("font-size: 16px; font-family: 'Microsoft YaHei';");
 
     // 2. 自动化加载：在程序启动时，自动往下拉框塞入“支出”和“收入”
-    ui->comboBoxType->clear();
-    ui->comboBoxType->addItem("支出");
-    ui->comboBoxType->addItem("收入");
+    ui->comboType->clear();
+    ui->comboType->addItem("支出");
+    ui->comboType->addItem("收入");
+    //先让新的分类下拉框初始化（默认塞入支出分类）
+    ui->comboCategory->clear();
+    ui->comboCategory->addItems(QStringList() << "餐饮" << "购物" << "日用" << "交通" << "娱乐" << "医疗" << "其他");
+
+    ui->lineEditComment->setEditable(true);
+    ui->lineEditComment->clear();
+    ui->lineEditComment->addItems(getTopThreeRemarks());
+    ui->lineEditComment->setCurrentText("");
+
+    //直接绑架你原本就有的那个大类选择框（假设叫 comboType）
+    connect(ui->comboType, &QComboBox::currentTextChanged, this, [=](const QString &type){
+        ui->comboCategory->clear();
+        if (type == "支出") {
+            ui->comboCategory->addItems(QStringList() << "餐饮" << "购物" << "日用" << "交通" << "娱乐" << "医疗" << "其他");
+        }
+        else if (type == "收入") {
+            ui->comboCategory->addItems(QStringList() << "工资" << "生活费" << "奖学金" << "兼职" << "理财" << "其他");
+        }
+    });
 }
 
 AddOne::~AddOne()
@@ -49,7 +68,7 @@ AddOne::~AddOne()
 void AddOne::on_buttonBox_accepted()
 {
     // 1. 检查输入合法性（先做检查，如果不合法直接拦截，省去后面所有无用功）
-    QString category = ui->lineEditCategory->text().trimmed();
+    QString category = ui->comboCategory->currentText();
     double amount = ui->lineEditAmount->text().toDouble();
 
     if (category.isEmpty() || amount <= 0) {
@@ -67,12 +86,12 @@ void AddOne::on_buttonBox_accepted()
         QTextStream out(&file);
 
         // 用逗号 `,` 分隔。备注如果为空，默认写“无”
-        QString comment = ui->lineEditComment->text().trimmed();
+        QString comment = ui->lineEditComment->currentText();
         if (comment.isEmpty()) comment = "无";
 
         // 啪！整整齐齐写进文件，Qt 会在后台自动处理好所有中文编码，绝对不会乱码
         out << ui->dateEdit->date().toString("yyyy-MM-dd") << ","
-            << ui->comboBoxType->currentText() << ","
+            << ui->comboType->currentText() << ","
             << category << ","
             << amount << ","
             << comment << "\n";
@@ -85,6 +104,48 @@ void AddOne::on_buttonBox_accepted()
 
     // 3. 完美的闭环：关闭弹窗，通知主界面变亮并刷新
     this->accept();
+}
+
+
+QStringList AddOne::getTopThreeRemarks() {
+    QFile file("data.txt"); // 确认你的 data.txt 路径正确
+    QMap<QString, int> remarkCount;
+
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qDebug() << "打不开 data.txt 啦！";
+        return QStringList();
+    }
+
+    QTextStream in(&file);
+    while (!in.atEnd()) {
+        QString line = in.readLine();
+        QStringList parts = line.split(",");
+        if (parts.size() >= 4) {
+            QString remark = parts[2].trimmed();
+            if (!remark.isEmpty()) {
+                remarkCount[remark]++;
+            }
+        }
+    }
+    file.close();
+
+    // 接下来：把 Map 里的数据按照出现次数进行降序排序
+    // 我们可以把它们倒腾到一个 QList 里方便用 std::sort
+    QList<QPair<QString, int>> sortedList;
+    for (auto it = remarkCount.begin(); it != remarkCount.end(); ++it) {
+        sortedList.append(qMakePair(it.key(), it.value()));
+    }
+
+    std::sort(sortedList.begin(), sortedList.end(), [](const QPair<QString, int>& a, const QPair<QString, int>& b) {
+        return a.second > b.second;
+    });
+
+    QStringList topThree;
+    for (int i = 0; i < qMin(3, sortedList.size()); ++i) {
+        topThree.append(sortedList[i].first);
+    }
+
+    return topThree;
 }
 
 // 当用户点击了 Button Box 里的 “Cancel” 或者 “取消” 按钮时

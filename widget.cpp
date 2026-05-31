@@ -21,6 +21,7 @@ Widget::Widget(QWidget *parent)
 
     currentViewingMonth = QDate::currentDate().toString("yyyy-MM"); // 拿到系统当月
     updateHomeUi(currentViewingMonth); // 展现当月数据
+    updateSidebarStyle(ui->btnHome);//默认主页变红
 
     //  大红按钮点击事件(添加一笔收支）
     connect(ui->btnOpenAdd, &QPushButton::clicked, this, [=](){
@@ -68,7 +69,6 @@ void Widget::loadAndCalculateAllData()
         QString line = in.readLine().trimmed();
         if (line.isEmpty()) continue;
 
-        // 🌟 极其强大的切分：直接按逗号 `,` 把整行切成一截一截的列表
         QStringList tokens = line.split(",");
 
         // 确保一行切出了 5 个字段
@@ -82,7 +82,7 @@ void Widget::loadAndCalculateAllData()
             // 提取年月 Key (如 "2026-05")
             QString yearMonthKey = qDate.left(7).replace("/", "-");
 
-            // 此时 qType 是纯正的 Qt 中文字符串，绝对不会对不上了！
+
             if (qType == "收入") {
                 allMonthsData[yearMonthKey].income += amount;
             } else if (qType == "支出") {
@@ -123,6 +123,61 @@ void Widget::updateHomeUi(const QString &yearMonth)
     ui->lblCount->setText(QString::number(stat.count) + " 笔");
 }
 
-// 侧边栏翻页
-void Widget::on_btnHome_clicked() { ui->stackedWidget->setCurrentIndex(0); }
-void Widget::on_btnHistory_clicked() { ui->stackedWidget->setCurrentIndex(1); }
+// 侧边栏翻页 + 变色联动
+void Widget::on_btnHome_clicked() {
+    ui->stackedWidget->setCurrentIndex(0);
+    updateSidebarStyle(ui->btnHome);
+}
+void Widget::on_btnHistory_clicked() {
+    ui->stackedWidget->setCurrentIndex(1);
+    updateSidebarStyle(ui->btnHistory);
+}
+void Widget::on_btnCount_clicked() {
+    ui->stackedWidget->setCurrentIndex(2);
+    updateSidebarStyle(ui->btnCount);
+}
+void Widget::on_btnBudget_clicked() {
+    ui->stackedWidget->setCurrentIndex(3);
+    updateSidebarStyle(ui->btnBudget);
+}
+void Widget::on_btnManagement_clicked() {
+    ui->stackedWidget->setCurrentIndex(4);
+    updateSidebarStyle(ui->btnManagement);
+}
+void Widget::updateSidebarStyle(QPushButton* activeBtn)
+{
+
+    QList<QPushButton*> sidebarBtns = {
+        ui->btnHome,
+        ui->btnHistory,
+        ui->btnCount,
+        ui->btnBudget,
+        ui->btnManagement
+    };
+
+    QString activeStyle = "QPushButton { "
+                          "background-color: #8c1515;"
+                          "color: white; "
+                          "border: none; "
+                          "font-weight: bold;"
+                          "}";
+
+    QString inactiveStyle = "QPushButton { "
+                            "background-color: #FFFFFF; "
+                            "color: #333333; "
+                            "font-weight: bold"
+                            "border: none; "
+                            "} "
+                            "QPushButton:hover { "
+                            "background-color: #FFF0F2; "
+                            "}";
+
+    // 遍历所有按钮，动态发牌
+    for (QPushButton* btn : sidebarBtns) {
+        if (btn == activeBtn) {
+            btn->setStyleSheet(activeStyle);   // 命中的变红
+        } else {
+            btn->setStyleSheet(inactiveStyle); // 没命中的变白
+        }
+    }
+}
