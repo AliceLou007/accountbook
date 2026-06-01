@@ -9,6 +9,9 @@ Record::Record(QWidget *parent) : QWidget(parent), ui(new Ui::Record) {
 
     loadDataFromFile(); // 1. 一出生先去读文件
     displayRecords();   // 2. 展现数据（默认按时间）
+
+    this->setAttribute(Qt::WA_StyledBackground, true);
+    updateTopbarStyle(ui->sortTime);
 }
 
 Record::~Record() { delete ui; }
@@ -61,17 +64,50 @@ void Record::displayRecords() {
         QString displayText = QString("[%1] %2 | %3 %4元 (%5)")
                                   .arg(item.date).arg(item.category).arg(sign)
                                   .arg(QString::number(item.amount, 'f', 2)).arg(item.remark);
-        ui->listRecords->addItem(displayText);
+
+        QListWidgetItem *listItem = new QListWidgetItem(displayText);
+
+        QFont font = listItem->font();
+        font.setPointSize(12);
+
+        font.setFamily("Microsoft YaHei");
+
+        listItem->setFont(font);
+
+        listItem->setSizeHint(QSize(listItem->sizeHint().width(), 35));
+        ui->listRecords->addItem(listItem);
     }
 }
 
-void Record::on_btnSortTime_clicked() {
+void Record::on_sortTime_clicked() {
     m_currentSortType = 0; // 切换状态为时间
     displayRecords();      // 重新排序并刷新大屏幕 listRecords
+    updateTopbarStyle(ui->sortTime);
 }
 
 // 点击“按分类排序”按钮
-void Record::on_btnSortCategory_clicked() {
+void Record::on_sortCategory_clicked() {
     m_currentSortType = 1; // 切换状态为分类
     displayRecords();      // 重新排序并刷新大屏幕 listRecords
+    updateTopbarStyle(ui->sortCategory);
+}
+void Record::updateTopbarStyle(QPushButton* activeBtn)
+{
+
+    QString activeStyle = "background-color: #8c1515; color: white; border: none; font-weight: bold;";
+    QString inactiveStyle = "background-color: #FFFFFF; color: #333333; border: none; font-weight: bold;";
+
+    // 时间按钮发牌
+    if (ui->sortTime == activeBtn) {
+        ui->sortTime->setStyleSheet(activeStyle);
+    } else {
+        ui->sortTime->setStyleSheet(inactiveStyle);
+    }
+
+    // 分类按钮发牌
+    if (ui->sortCategory == activeBtn) {
+        ui->sortCategory->setStyleSheet(activeStyle);
+    } else {
+        ui->sortCategory->setStyleSheet(inactiveStyle);
+    }
 }

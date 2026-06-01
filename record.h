@@ -1,6 +1,7 @@
 #pragma once
 #include <QWidget>
 #include <QStringList>
+#include <QPushButton>
 
 // 定义一个结构体用来存单条账目
 struct AccountItem {
@@ -20,8 +21,8 @@ public:
     ~Record();
 
 private slots:
-    void on_btnSortTime_clicked();     // 点击时间按钮触发
-    void on_btnSortCategory_clicked(); // 点击分类按钮触发
+    void on_sortTime_clicked();     // 点击时间按钮触发
+    void on_sortCategory_clicked(); // 点击分类按钮触发
 
 private:
     Ui::Record *ui;
@@ -30,4 +31,5 @@ private:
 
     void loadDataFromFile();         // 读取 data.txt
     void displayRecords();           // 把排序后的数据显示到 ListWidget 上
+    void updateTopbarStyle(QPushButton* activeBtn);
 };

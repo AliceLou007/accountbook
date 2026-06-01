@@ -13,6 +13,11 @@
   <property name="windowTitle">
    <string>Widget</string>
   </property>
+  <property name="styleSheet">
+   <string notr="true">#Widget{
+	background-color：#FFFFFF;
+}</string>
+  </property>
   <widget class="QStackedWidget" name="stackedWidget">
    <property name="geometry">
     <rect>
@@ -23,14 +28,19 @@
     </rect>
    </property>
    <property name="styleSheet">
-    <string notr="true">#stackedEidget{
-background-color: #F8F9FA;
+    <string notr="true">.QWidget {
+    background-color: #FFFFFF;
 }</string>
    </property>
    <property name="currentIndex">
     <number>0</number>
    </property>
    <widget class="QWidget" name="Homepage">
+    <property name="styleSheet">
+     <string notr="true">
+	background-color:#FFFFFF；
+</string>
+    </property>
     <widget class="QFrame" name="frame">
      <property name="geometry">
       <rect>
@@ -44,6 +54,7 @@ background-color: #F8F9FA;
       <string notr="true">#frame {
 	border-image: url(:/bg_balance.png);
     border-radius: 16px;
+	border: 3px solid #7A4343;
 }</string>
      </property>
      <property name="frameShape">
@@ -71,6 +82,26 @@ background-color: #F8F9FA;
       </property>
       <property name="text">
        <string>TextLabel</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_5">
+      <property name="geometry">
+       <rect>
+        <x>60</x>
+        <y>50</y>
+        <width>171</width>
+        <height>41</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">QLabel {
+    font-family: &quot;Helvetica Neue&quot;, Helvetica, Inter, Roboto, &quot;Microsoft YaHei&quot;, sans-serif;
+    font-size: 16px;            
+    color: #1a1a1a;
+}</string>
+      </property>
+      <property name="text">
+       <string>本月结余</string>
       </property>
      </widget>
     </widget>

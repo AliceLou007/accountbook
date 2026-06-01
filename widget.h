@@ -3,6 +3,7 @@
 
 #include <QWidget>
 #include <QPushButton>
+#include "record.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class Widget; }
@@ -29,6 +30,7 @@ private slots:
 private:
     Ui::Widget *ui;
 
+    Record *m_recordPage;
     // 1. 定义一个结构体，用来存放“某一个月”的统计账目
     struct MonthStat {
         double income = 0.0;   // 当月总收入

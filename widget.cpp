@@ -15,9 +15,11 @@ Widget::Widget(QWidget *parent)
 {
     ui->setupUi(this);
 
-
     this->setFixedSize(950, 850);
     ui->stackedWidget->setCurrentIndex(0);
+
+    m_recordPage=new Record(this);
+    ui->stackedWidget->insertWidget(1, m_recordPage);
 
     currentViewingMonth = QDate::currentDate().toString("yyyy-MM"); // 拿到系统当月
     updateHomeUi(currentViewingMonth); // 展现当月数据
@@ -129,7 +131,7 @@ void Widget::on_btnHome_clicked() {
     updateSidebarStyle(ui->btnHome);
 }
 void Widget::on_btnHistory_clicked() {
-    ui->stackedWidget->setCurrentIndex(1);
+    ui->stackedWidget->setCurrentWidget(m_recordPage);
     updateSidebarStyle(ui->btnHistory);
 }
 void Widget::on_btnCount_clicked() {
