@@ -1,13 +1,29 @@
 #include "widget.h"
 #include "ui_widget.h"
+#include "manage.h"
 #include "addone.h"
+#include "record.h"
 #include <QDebug>
 #include <QDate>
 #include <QFile>
 #include <QTextStream>
 #include <QStringList>
 #include <QCoreApplication>
-#include<QPixmap>
+#include <QPixmap>
+#include <QFileDialog>
+#include <QInputDialog>
+#include <QMessageBox>
+#include <QDir>
+#include <QMenu>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QLineEdit>
+#include <QTextEdit>
+#include <QComboBox>
+#include <QLabel>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
 
 Widget::Widget(QWidget *parent)
     : QWidget(parent)
@@ -18,14 +34,106 @@ Widget::Widget(QWidget *parent)
     this->setFixedSize(950, 850);
     ui->stackedWidget->setCurrentIndex(0);
 
-    m_recordPage=new Record(this);
+    m_recordPage = new Record(this);
     ui->stackedWidget->insertWidget(1, m_recordPage);
 
-    currentViewingMonth = QDate::currentDate().toString("yyyy-MM"); // 拿到系统当月
-    updateHomeUi(currentViewingMonth); // 展现当月数据
-    updateSidebarStyle(ui->btnHome);//默认主页变红
+    m_managePage = new Manage(this);
+    ui->stackedWidget->insertWidget(4, m_managePage);
 
-    //  大红按钮点击事件(添加一笔收支）
+    currentViewingMonth = QDate::currentDate().toString("yyyy-MM");
+    updateHomeUi(currentViewingMonth);
+    updateSidebarStyle(ui->btnHome);
+
+    // ========== 创建左上角用户信息区域（头像 + 姓名 + 性别） ==========
+    // 创建一个容器 Widget
+    m_userInfoWidget = new QWidget(this);
+    m_userInfoWidget->setFixedSize(130, 130);
+    m_userInfoWidget->move(25, 20);
+    m_userInfoWidget->setStyleSheet("background-color: transparent;");
+
+    // 垂直布局
+    QVBoxLayout *userInfoLayout = new QVBoxLayout(m_userInfoWidget);
+    userInfoLayout->setContentsMargins(0, 0, 0, 0);
+    userInfoLayout->setSpacing(5);
+
+    // 头像按钮容器
+    m_avatarBtn = new QPushButton(m_userInfoWidget);
+    m_avatarBtn->setFixedSize(80, 80);
+    m_avatarBtn->setCursor(Qt::PointingHandCursor);
+    m_avatarBtn->setStyleSheet(
+        "QPushButton {"
+        "   background-color: transparent;"
+        "   border: none;"
+        "   border-radius: 40px;"
+        "}"
+        "QPushButton:hover {"
+        "   background-color: rgba(0, 0, 0, 30);"
+        "   border-radius: 40px;"
+        "}"
+        );
+
+    // 头像标签
+    m_avatarLabel = new QLabel(m_avatarBtn);
+    m_avatarLabel->setFixedSize(80, 80);
+    m_avatarLabel->setStyleSheet(
+        "QLabel {"
+        "   background-color: #f0f0f0;"
+        "   border: 2px solid #8c1515;"
+        "   border-radius: 40px;"
+        "}"
+        );
+    m_avatarLabel->setAlignment(Qt::AlignCenter);
+    m_avatarLabel->setText("👤");
+    m_avatarLabel->setStyleSheet(
+        "QLabel {"
+        "   background-color: #f0f0f0;"
+        "   border: 2px solid #8c1515;"
+        "   border-radius: 40px;"
+        "   font-size: 40px;"
+        "}"
+        );
+
+    // 设置头像按钮的布局
+    QVBoxLayout *avatarLayout = new QVBoxLayout(m_avatarBtn);
+    avatarLayout->addWidget(m_avatarLabel);
+    avatarLayout->setContentsMargins(0, 0, 0, 0);
+
+    // 姓名标签
+    m_nameLabel = new QLabel(m_userInfoWidget);
+    m_nameLabel->setAlignment(Qt::AlignCenter);
+    m_nameLabel->setStyleSheet(
+        "QLabel {"
+        "   color: #333333;"
+        "   font-size: 14px;"
+        "   font-weight: bold;"
+        "   background-color: transparent;"
+        "}"
+        );
+
+    // 性别标签
+    m_genderLabel = new QLabel(m_userInfoWidget);
+    m_genderLabel->setAlignment(Qt::AlignCenter);
+    m_genderLabel->setStyleSheet(
+        "QLabel {"
+        "   color: #8c1515;"
+        "   font-size: 12px;"
+        "   background-color: transparent;"
+        "}"
+        );
+
+    // 添加到布局
+    userInfoLayout->addWidget(m_avatarBtn, 0, Qt::AlignHCenter);
+    userInfoLayout->addWidget(m_nameLabel);
+    userInfoLayout->addWidget(m_genderLabel);
+
+    // 连接头像点击信号
+    connect(m_avatarBtn, &QPushButton::clicked, this, &Widget::onAvatarClicked);
+
+    // 加载用户信息
+    loadUserProfile();
+    updateUserInfoDisplay();
+
+    // 大红按钮点击事件
     connect(ui->btnOpenAdd, &QPushButton::clicked, this, [=](){
         QWidget *mask = new QWidget(this);
         mask->setGeometry(this->rect());
@@ -39,7 +147,6 @@ Widget::Widget(QWidget *parent)
         dialog.move(x, y);
 
         if (dialog.exec() == QDialog::Accepted) {
-            // 当弹窗成功写入 data.txt 并关闭后，主页面立刻重新读文件、刷新数字！
             updateHomeUi(currentViewingMonth);
         }
 
@@ -50,19 +157,19 @@ Widget::Widget(QWidget *parent)
 
 Widget::~Widget()
 {
+    saveUserProfile();
     delete ui;
 }
 
-//  编写完整的算账刷新函数
 void Widget::loadAndCalculateAllData()
 {
-    allMonthsData.clear(); // 清空旧统计
+    allMonthsData.clear();
 
     QString filePath = QCoreApplication::applicationDirPath() + "/data.txt";
     QFile file(filePath);
 
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return; // 文件不存在直接返回
+        return;
     }
 
     QTextStream in(&file);
@@ -73,7 +180,6 @@ void Widget::loadAndCalculateAllData()
 
         QStringList tokens = line.split(",");
 
-        // 确保一行切出了 5 个字段
         if (tokens.size() >= 5) {
             QString qDate = tokens[0];
             QString qType = tokens[1];
@@ -81,9 +187,7 @@ void Widget::loadAndCalculateAllData()
             double amount = tokens[3].toDouble();
             QString qComment = tokens[4];
 
-            // 提取年月 Key (如 "2026-05")
             QString yearMonthKey = qDate.left(7).replace("/", "-");
-
 
             if (qType == "收入") {
                 allMonthsData[yearMonthKey].income += amount;
@@ -95,18 +199,15 @@ void Widget::loadAndCalculateAllData()
     }
     file.close();
 
-    // 重新计算结余
     for (auto it = allMonthsData.begin(); it != allMonthsData.end(); ++it) {
         it.value().balance = it.value().income - it.value().outcome;
     }
 }
-// 2. 核心：给它一个 "YYYY-MM"，它就去 Map 里抓数据刷到界面上
+
 void Widget::updateHomeUi(const QString &yearMonth)
 {
-    // 1. 调用读文件函数
     loadAndCalculateAllData();
 
-    // 2. 如果 Map 里根本没有这个月的数据（说明这个月没记过账）
     if (!allMonthsData.contains(yearMonth)) {
         ui->lblIncomeAmount->setText("￥ 0.00");
         ui->lblOutcomeAmount->setText("￥ 0.00");
@@ -115,17 +216,14 @@ void Widget::updateHomeUi(const QString &yearMonth)
         return;
     }
 
-    // 3. 获取该月份的结构体数据
     const MonthStat &stat = allMonthsData[yearMonth];
 
-    // 4. 啪！刷新进界面
     ui->lblIncomeAmount->setText("￥ " + QString::number(stat.income, 'f', 2));
     ui->lblOutcomeAmount->setText("￥ " + QString::number(stat.outcome, 'f', 2));
     ui->lblBalanceAmount->setText("￥ " + QString::number(stat.balance, 'f', 2));
     ui->lblCount->setText(QString::number(stat.count) + " 笔");
 }
 
-// 侧边栏翻页 + 变色联动
 void Widget::on_btnHome_clicked() {
     ui->stackedWidget->setCurrentIndex(0);
     updateSidebarStyle(ui->btnHome);
@@ -146,9 +244,9 @@ void Widget::on_btnManagement_clicked() {
     ui->stackedWidget->setCurrentIndex(4);
     updateSidebarStyle(ui->btnManagement);
 }
+
 void Widget::updateSidebarStyle(QPushButton* activeBtn)
 {
-
     QList<QPushButton*> sidebarBtns = {
         ui->btnHome,
         ui->btnHistory,
@@ -157,29 +255,322 @@ void Widget::updateSidebarStyle(QPushButton* activeBtn)
         ui->btnManagement
     };
 
-    QString activeStyle = "QPushButton { "
-                          "background-color: #8c1515;"
-                          "color: white; "
-                          "border: none; "
-                          "font-weight: bold;"
-                          "}";
+    QString activeStyle = R"(
+        QPushButton {
+            background-color: rgba(140, 21, 21, 0.85);
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            text-align: left;
+            padding-left: 30px;
+            border-left: 3px solid #ff9999;
+            border-radius: 0px;
+        }
+        QPushButton:hover {
+            background-color: #8c1515;
+        }
+    )";
 
-    QString inactiveStyle = "QPushButton { "
-                            "background-color: #FFFFFF; "
-                            "color: #333333; "
-                            "font-weight: bold"
-                            "border: none; "
-                            "} "
-                            "QPushButton:hover { "
-                            "background-color: #FFF0F2; "
-                            "}";
+    QString inactiveStyle = R"(
+        QPushButton {
+            color: #444444;
+            font-size: 14px;
+            font-weight: bold;
+            text-align: left;
+            padding-left: 30px;
+            background-color: rgba(255, 255, 255, 0.75);
+            border: none;
+        }
+        QPushButton:hover {
+            background-color: rgba(140, 21, 21, 0.12);
+            color: #8c1515;
+        }
+    )";
 
-    // 遍历所有按钮，动态发牌
     for (QPushButton* btn : sidebarBtns) {
         if (btn == activeBtn) {
-            btn->setStyleSheet(activeStyle);   // 命中的变红
+            btn->setStyleSheet(activeStyle);
         } else {
-            btn->setStyleSheet(inactiveStyle); // 没命中的变白
+            btn->setStyleSheet(inactiveStyle);
         }
+    }
+}
+
+void Widget::loadUserProfile()
+{
+    QString filePath = QDir::currentPath() + "/user_profile.json";
+    QFile file(filePath);
+
+    if (!file.exists()) {
+        m_userId = "10001";
+        m_userName = "未设置";
+        m_userAge = 18;
+        m_userGender = "保密";
+        m_userSignature = "这个人很懒，什么都没写~";
+        return;
+    }
+
+    if (!file.open(QIODevice::ReadOnly)) {
+        return;
+    }
+
+    QByteArray data = file.readAll();
+    file.close();
+
+    QJsonDocument doc = QJsonDocument::fromJson(data);
+    if (!doc.isObject()) {
+        return;
+    }
+
+    QJsonObject obj = doc.object();
+    m_userId = obj["userId"].toString();
+    m_userName = obj["userName"].toString();
+    m_userAge = obj["userAge"].toInt();
+    m_userGender = obj["userGender"].toString();
+    m_userSignature = obj["userSignature"].toString();
+
+    // 加载头像
+    QString avatarPath = obj["avatarPath"].toString();
+    if (!avatarPath.isEmpty() && QFile::exists(avatarPath)) {
+        m_userAvatar.load(avatarPath);
+    }
+}
+
+void Widget::saveUserProfile()
+{
+    QString filePath = QDir::currentPath() + "/user_profile.json";
+    QFile file(filePath);
+
+    if (!file.open(QIODevice::WriteOnly)) {
+        return;
+    }
+
+    QJsonObject obj;
+    obj["userId"] = m_userId;
+    obj["userName"] = m_userName;
+    obj["userAge"] = m_userAge;
+    obj["userGender"] = m_userGender;
+    obj["userSignature"] = m_userSignature;
+
+    // 保存头像路径
+    if (!m_userAvatar.isNull()) {
+        QString avatarPath = QDir::currentPath() + "/avatar.png";
+        m_userAvatar.save(avatarPath);
+        obj["avatarPath"] = avatarPath;
+    }
+
+    QJsonDocument doc(obj);
+    file.write(doc.toJson());
+    file.close();
+}
+
+void Widget::updateUserInfoDisplay()
+{
+    // 更新头像显示
+    if (!m_userAvatar.isNull()) {
+        QPixmap scaledAvatar = m_userAvatar.scaled(76, 76, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        m_avatarLabel->setPixmap(scaledAvatar);
+        m_avatarLabel->setText("");
+        m_avatarLabel->setStyleSheet(
+            "QLabel {"
+            "   border: 2px solid #8c1515;"
+            "   border-radius: 40px;"
+            "   background-color: white;"
+            "}"
+            );
+    } else {
+        m_avatarLabel->setText("👤");
+        m_avatarLabel->setStyleSheet(
+            "QLabel {"
+            "   background-color: #f0f0f0;"
+            "   border: 2px solid #8c1515;"
+            "   border-radius: 40px;"
+            "   font-size: 40px;"
+            "}"
+            );
+    }
+
+    // 更新姓名
+    QString displayName = m_userName;
+    if (displayName.length() > 8) {
+        displayName = displayName.left(6) + "...";
+    }
+    m_nameLabel->setText(displayName);
+
+    // 更新性别显示（带图标）
+    QString genderText;
+    if (m_userGender == "男") {
+        genderText = "♂ 男";
+    } else if (m_userGender == "女") {
+        genderText = "♀ 女";
+    } else {
+        genderText = "⚪ 保密";
+    }
+    m_genderLabel->setText(genderText);
+}
+
+void Widget::updateAvatarDisplay()
+{
+    // 更新头像显示（调用新的统一方法）
+    updateUserInfoDisplay();
+}
+
+void Widget::onAvatarClicked()
+{
+    QMenu menu(this);
+
+    QAction *editProfileAction = menu.addAction("✏️ 编辑个人信息");
+    QAction *changeAvatarAction = menu.addAction("🖼️ 更换头像");
+    menu.addSeparator();
+    QAction *logoutAction = menu.addAction("🚪 退出登录");
+
+    connect(editProfileAction, &QAction::triggered, this, &Widget::onEditProfile);
+    connect(changeAvatarAction, &QAction::triggered, this, &Widget::onChangeAvatar);
+    connect(logoutAction, &QAction::triggered, this, &Widget::onLogout);
+
+    // 在头像位置显示菜单
+    QPoint pos = m_avatarBtn->mapToGlobal(QPoint(0, m_avatarBtn->height()));
+    menu.exec(pos);
+}
+
+void Widget::onEditProfile()
+{
+    QDialog dialog(this);
+    dialog.setWindowTitle("编辑个人信息");
+    dialog.setFixedSize(400, 550);
+    dialog.setStyleSheet("background-color: white;");
+
+    QVBoxLayout *layout = new QVBoxLayout(&dialog);
+
+    // ID（只读显示）
+    QLabel *idLabel = new QLabel("ID：");
+    QLineEdit *idEdit = new QLineEdit(m_userId);
+    idEdit->setReadOnly(true);
+    idEdit->setStyleSheet("QLineEdit { color: black; background-color: #f5f5f5; }");
+
+    // 姓名
+    QLabel *nameLabel = new QLabel("姓名：");
+    QLineEdit *nameEdit = new QLineEdit(m_userName);
+    nameEdit->setPlaceholderText("请输入姓名");
+    nameEdit->setStyleSheet("QLineEdit { color: black; }");
+
+    // 年龄
+    QLabel *ageLabel = new QLabel("年龄：");
+    QLineEdit *ageEdit = new QLineEdit(QString::number(m_userAge));
+    ageEdit->setPlaceholderText("请输入年龄");
+    ageEdit->setStyleSheet("QLineEdit { color: black; }");
+
+    // 性别
+    QLabel *genderLabel = new QLabel("性别：");
+    QComboBox *genderCombo = new QComboBox();
+    genderCombo->addItems({"保密", "男", "女"});
+    int index = genderCombo->findText(m_userGender);
+    if (index >= 0) genderCombo->setCurrentIndex(index);
+    genderCombo->setStyleSheet("QComboBox { color: black; } QComboBox QAbstractItemView { color: black; }");
+
+    // 个性签名
+    QLabel *sigLabel = new QLabel("个性签名：");
+    QTextEdit *sigEdit = new QTextEdit();
+    sigEdit->setText(m_userSignature);
+    sigEdit->setMaximumHeight(80);
+    sigEdit->setStyleSheet("QTextEdit { color: black; }");
+
+    QHBoxLayout *btnLayout = new QHBoxLayout();
+    QPushButton *saveBtn = new QPushButton("保存");
+    QPushButton *cancelBtn = new QPushButton("取消");
+
+    QString btnStyle =
+        "QPushButton {"
+        "   background-color: rgba(140, 21, 21, 0.08);"
+        "   color: #444444;"
+        "   border: 1px solid #d0d0d0;"
+        "   border-radius: 5px;"
+        "   padding: 6px 20px;"
+        "}"
+        "QPushButton:hover {"
+        "   background-color: rgba(140, 21, 21, 0.15);"
+        "   color: #8c1515;"
+        "}";
+
+    saveBtn->setStyleSheet(btnStyle);
+    cancelBtn->setStyleSheet(btnStyle);
+
+    btnLayout->addStretch();
+    btnLayout->addWidget(saveBtn);
+    btnLayout->addWidget(cancelBtn);
+
+    layout->addWidget(idLabel);
+    layout->addWidget(idEdit);
+    layout->addSpacing(10);
+    layout->addWidget(nameLabel);
+    layout->addWidget(nameEdit);
+    layout->addSpacing(10);
+    layout->addWidget(ageLabel);
+    layout->addWidget(ageEdit);
+    layout->addSpacing(10);
+    layout->addWidget(genderLabel);
+    layout->addWidget(genderCombo);
+    layout->addSpacing(10);
+    layout->addWidget(sigLabel);
+    layout->addWidget(sigEdit);
+    layout->addStretch();
+    layout->addLayout(btnLayout);
+
+    connect(saveBtn, &QPushButton::clicked, &dialog, [&]() {
+        m_userName = nameEdit->text().trimmed();
+        if (m_userName.isEmpty()) m_userName = "未设置";
+
+        bool ok;
+        int age = ageEdit->text().trimmed().toInt(&ok);
+        if (ok && age > 0 && age < 150) {
+            m_userAge = age;
+        }
+
+        m_userGender = genderCombo->currentText();
+        m_userSignature = sigEdit->toPlainText().trimmed();
+        if (m_userSignature.isEmpty()) m_userSignature = "这个人很懒，什么都没写~";
+
+        saveUserProfile();
+        updateUserInfoDisplay();
+        dialog.accept();
+        QMessageBox::information(this, "提示", "个人信息已保存！");
+    });
+
+    connect(cancelBtn, &QPushButton::clicked, &dialog, &QDialog::reject);
+
+    dialog.exec();
+}
+
+void Widget::onChangeAvatar()
+{
+    QString filePath = QFileDialog::getOpenFileName(this,
+                                                    "选择头像",
+                                                    "",
+                                                    "图片文件 (*.png *.jpg *.jpeg *.bmp)");
+
+    if (!filePath.isEmpty()) {
+        QPixmap avatar(filePath);
+        if (!avatar.isNull()) {
+            m_userAvatar = avatar;
+            updateUserInfoDisplay();
+            saveUserProfile();
+            QMessageBox::information(this, "提示", "头像已更换！");
+        } else {
+            QMessageBox::warning(this, "错误", "无法加载图片，请选择有效的图片文件");
+        }
+    }
+}
+
+void Widget::onLogout()
+{
+    QMessageBox::StandardButton reply = QMessageBox::question(this,
+                                                              "确认退出",
+                                                              "确定要退出登录吗？",
+                                                              QMessageBox::Yes | QMessageBox::No);
+
+    if (reply == QMessageBox::Yes) {
+        QMessageBox::information(this, "提示", "已退出登录");
+        // 这里可以添加真正的退出逻辑，比如关闭窗口或返回登录界面
+        // this->close();
     }
 }

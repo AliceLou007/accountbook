@@ -94,7 +94,7 @@ void AddOne::on_buttonBox_accepted()
             << ui->comboType->currentText() << ","
             << category << ","
             << amount << ","
-            << comment << "\n";
+            << comment << "\\\\n";
 
         file.close();
     } else {

@@ -1,9 +1,12 @@
-# Qt Creator 配置文件 (包含你的本地路径，千万别传)
+# Qt Creator 配置文件
 *.pro.user
 *.pro.user.*
 *.CMakeLists.txt.user
 
-# 编译生成的构建文件夹 (Release / Debug)
+# Visual Studio 配置文件
+.vs/
+
+# 编译生成的构建文件夹
 build*/
 CMakeScripts/
 Makefile*
@@ -13,3 +16,8 @@ Makefile*
 # 编译生成的程序
 *.exe
 *.app
+
+# Qt 临时文件
+*.user
+*.db
+*.suo

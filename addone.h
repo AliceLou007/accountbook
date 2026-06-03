@@ -24,6 +24,7 @@ class AddOne : public QDialog // 确保这里是 QDialog
 
 public:
     explicit AddOne(QWidget *parent = nullptr);
+    void setCurrentBookName(const QString &bookName);
     ~AddOne();
 
 private slots:
@@ -33,6 +34,7 @@ private slots:
 private:
     Ui::AddOne *ui;
     QStringList getTopThreeRemarks();
+    QString m_currentBookName;
 };
 
 #endif // ADDONE_H

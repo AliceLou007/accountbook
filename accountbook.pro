@@ -8,19 +8,26 @@ CONFIG += c++17
 
 SOURCES += \
     addone.cpp \
+    bookdetail.cpp \
+    createbookdialog.cpp \
+    editbookdialog.cpp \
     main.cpp \
+    manage.cpp \
     record.cpp \
     widget.cpp
 
 HEADERS += \
     addone.h \
+    bookdetail.h \
+    createbookdialog.h \
+    editbookdialog.h \
+    manage.h \
     record.h \
     widget.h
 
-FORMS += \
+FORMS += widget.ui \
     addone.ui \
-    record.ui \
-    widget.ui
+    record.ui
 
 TRANSLATIONS += \
     accountbook_en_GB.ts
@@ -33,4 +40,4 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
 RESOURCES += \
-    res.qrc
+    res.qrc \
