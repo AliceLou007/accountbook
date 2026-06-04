@@ -164,19 +164,26 @@ void Record::loadDataFromFile() {
     m_allRecords.clear();
 
     if (m_currentBookName.isEmpty() || m_currentBookName == "未选择") {
+        qDebug() << "没有选中账本";
         return;
     }
 
     QString fileName = QString("%1_data.txt").arg(m_currentBookName);
     QFile file(fileName);
 
+    qDebug() << "正在从" << fileName << "加载数据";
+
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qDebug() << "文件不存在或无法打开";
         return;
     }
 
     QTextStream in(&file);
+    int lineCount = 0;
+
     while (!in.atEnd()) {
         QString line = in.readLine();
+        lineCount++;
         if (line.trimmed().isEmpty()) continue;
 
         QStringList parts = line.split(",");
@@ -188,9 +195,13 @@ void Record::loadDataFromFile() {
             item.amount = parts[4].toDouble();
             item.remark = parts[5].trimmed();
             m_allRecords.append(item);
+        } else {
+            qDebug() << "行格式错误:" << line;
         }
     }
     file.close();
+
+    qDebug() << "加载了" << lineCount << "行，" << m_allRecords.size() << "条有效记录";
 }
 
 void Record::saveDataToFile() {
@@ -207,15 +218,20 @@ void Record::saveDataToFile() {
     }
 
     QTextStream out(&file);
+
+    qDebug() << "正在保存" << m_allRecords.size() << "条记录到" << fileName;
+
     for (const auto& item : m_allRecords) {
         out << m_currentBookName << ","
             << item.date << ","
             << item.type << ","
             << item.category << ","
             << item.amount << ","
-            << item.remark << "\\n";
+            << item.remark << "\n";
     }
     file.close();
+
+    qDebug() << "保存完成";
 }
 
 void Record::displayRecords() {
@@ -287,7 +303,7 @@ void Record::on_deleteRecord_clicked(int index)
     if (index < 0 || index >= m_allRecords.size()) return;
 
     const auto& target = m_allRecords[index];
-    QString confirmMsg = QString("确定要删除这条记录吗？\\n\\n[%1] %2 %3元")
+    QString confirmMsg = QString("确定要删除这条记录吗？\n[%1] %2 %3元")
                              .arg(target.date).arg(target.category).arg(target.amount);
 
     QMessageBox::StandardButton reply = QMessageBox::question(this, "确认删除", confirmMsg,
@@ -367,15 +383,21 @@ void Record::on_currentBookBtn_clicked()
                                                  m_bookNames, m_selectedRow, false, &ok);
 
     if (ok && !selectedBook.isEmpty()) {
+        // 1. 先保存当前账本的数据
         saveDataToFile();
+        qDebug() << "已保存当前账本" << m_currentBookName;
 
+        // 2. 切换到新账本
         m_currentBookName = selectedBook;
         m_selectedRow = m_bookNames.indexOf(selectedBook);
 
+        // 3. 保存选中的账本到文件
         saveSelectedBook();
 
+        // 4. 更新按钮文字
         if (m_currentBookBtn) m_currentBookBtn->setText(m_currentBookName);
 
+        // 5. 加载新账本的数据
         loadDataFromFile();
         displayRecords();
 
@@ -386,6 +408,7 @@ void Record::on_currentBookBtn_clicked()
 void Record::showEvent(QShowEvent *event)
 {
     QWidget::showEvent(event);
+    // 每次显示窗口时，重新加载选中的账本
     loadSelectedBook();
     loadDataFromFile();
     displayRecords();
