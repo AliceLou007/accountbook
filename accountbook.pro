@@ -15,6 +15,7 @@ SOURCES += \
     logindialog.cpp \
     main.cpp \
     manage.cpp \
+    multibookdialog.cpp \
     networkclient.cpp \
     record.cpp \
     widget.cpp
@@ -27,6 +28,7 @@ HEADERS += \
     editbookdialog.h \
     logindialog.h \
     manage.h \
+    multibookdialog.h \
     networkclient.h \
     record.h \
     widget.h

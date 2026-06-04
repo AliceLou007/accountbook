@@ -34,6 +34,7 @@ public:
 private slots:
     void onCreateBook();
     void onInviteMember();
+    void onMultiBook();
     void onEditTags();
     void onSwitchBook(QTableWidgetItem *item);
     void onCurrentBookClicked();

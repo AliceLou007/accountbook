@@ -1,6 +1,7 @@
 #include "manage.h"
 #include <QInputDialog>
 #include "createbookdialog.h"
+#include "multibookdialog.h"  // 添加这一行
 #include "editbookdialog.h"
 #include "bookdetail.h"
 #include <QHeaderView>
@@ -13,6 +14,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QTimer>
+#include <QRandomGenerator>  // 添加这一行
 #include <QPushButton>
 #include <QDate>
 #include <QFile>
@@ -90,7 +92,7 @@ void Manage::setupUI()
 
     // 三个按钮
     m_btnCreate = new QPushButton("📒 创建新账本", m_managePage);
-    m_btnInvite = new QPushButton("👥 加入成员进我的账本", m_managePage);
+    m_btnInvite = new QPushButton("?? 在线多人账本", m_managePage);
     m_btnTags = new QPushButton("🏷️ 标签分类设置", m_managePage);
 
     QString btnStyle =
@@ -240,11 +242,12 @@ void Manage::setupUI()
 
     // 连接信号
     connect(m_btnCreate, &QPushButton::clicked, this, &Manage::onCreateBook);
-    connect(m_btnInvite, &QPushButton::clicked, this, &Manage::onInviteMember);
     connect(m_btnTags, &QPushButton::clicked, this, &Manage::onEditTags);
     connect(m_table, &QTableWidget::itemClicked, this, &Manage::onSwitchBook);
     connect(m_currentBookBtn, &QPushButton::clicked, this, &Manage::onCurrentBookClicked);
 
+    // 在连接信号的地方修改
+    connect(m_btnInvite, &QPushButton::clicked, this, &Manage::onMultiBook);
     m_table->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(m_table, &QTableWidget::customContextMenuRequested, this, &Manage::onTableContextMenu);
 }
@@ -552,51 +555,6 @@ void Manage::onCreateBook()
     }
 }
 
-void Manage::onInviteMember()
-{
-    NetworkClient* client = NetworkClient::getInstance();
-
-    // 如果未连接，尝试连接
-    if (!client->isConnected()) {
-        QMessageBox::StandardButton reply = QMessageBox::question(
-            this,
-            "连接服务器",
-            "未连接到服务器，是否尝试连接？\\\\n请确保服务器程序已运行。",
-            QMessageBox::Yes | QMessageBox::No
-            );
-
-        if (reply == QMessageBox::Yes) {
-            client->connectToServer("127.0.0.1", 8888);
-
-            // 等待2秒看是否连接成功
-            QEventLoop loop;
-            QTimer::singleShot(2000, &loop, &QEventLoop::quit);
-            loop.exec();
-
-            if (!client->isConnected()) {
-                QMessageBox::warning(this, "连接失败",
-                                     "无法连接到服务器，请检查：\\\\n"
-                                     "1. 服务器程序是否已启动\\\\n"
-                                     "2. 端口8888是否被占用\\\\n"
-                                     "3. 防火墙是否允许连接");
-                return;
-            }
-        } else {
-            return;
-        }
-    }
-
-    CreateBookDialog dialog(this);
-    dialog.setWindowTitle("创建多人账本");
-
-    if (dialog.exec() == QDialog::Accepted) {
-        QString bookName = dialog.getBookName();
-        QString remark = dialog.getRemark();
-
-        client->createBook(bookName, remark);
-        QMessageBox::information(this, "提示", "正在创建多人账本，请稍候...");
-    }
-}
 
 void Manage::onEditTags()
 {
@@ -715,7 +673,44 @@ void Manage::loadAccountBooks()
     m_table->verticalHeader()->setDefaultSectionSize(45);
     updateCurrentBookLabel();
 }
+void Manage::onInviteMember()
+{
+    // 邀请成员加入当前账本
+    if (m_currentBookName.isEmpty() || m_currentBookName == "未选择") {
+        QMessageBox::warning(this, "提示", "请先选择一个账本");
+        return;
+    }
 
+    // 查找当前账本的邀请码
+    QString inviteCode;
+    for (const BookInfo &book : m_books) {
+        if (book.name == m_currentBookName) {
+            if (book.inviteCode.isEmpty()) {
+                // 生成邀请码
+                const QString chars = "ABCDEFGHJKLMNPQRSTUVWXYZ0123456789";
+                for (int i = 0; i < 6; ++i) {
+                    int index = QRandomGenerator::global()->bounded(chars.length());
+                    inviteCode += chars.at(index);
+                }
+                // 保存邀请码
+                const_cast<BookInfo&>(book).inviteCode = inviteCode;
+                saveBooksToFile();
+            } else {
+                inviteCode = book.inviteCode;
+            }
+            break;
+        }
+    }
+
+    if (inviteCode.isEmpty()) {
+        QMessageBox::warning(this, "错误", "无法生成邀请码");
+        return;
+    }
+
+    QMessageBox::information(this, "邀请成员",
+                             QString("账本【%1】的邀请码是：%2\\n\\n请将邀请码告诉好友，他们可以使用此邀请码加入账本")
+                                 .arg(m_currentBookName).arg(inviteCode));
+}
 void Manage::onSwitchBook(QTableWidgetItem *item)
 {
     if (!item) return;
@@ -1028,4 +1023,59 @@ void Manage::showEvent(QShowEvent *event)
     // 每次显示窗口时，重新加载选中的账本
     loadSelectedBook();
     loadAccountBooks();  // 刷新表格，高亮正确的账本
+}
+void Manage::onMultiBook()
+{
+    // 获取所有账本名称
+    QStringList bookNames;
+    for (const BookInfo &book : m_books) {
+        bookNames << book.name;
+    }
+
+    if (bookNames.isEmpty()) {
+        QMessageBox::warning(this, "提示", "请先创建账本");
+        return;
+    }
+
+    MultiBookDialog dialog(bookNames, this);
+    if (dialog.exec() == QDialog::Accepted) {
+        if (dialog.getActionType() == MultiBookDialog::Invite) {
+            // 邀请模式：显示邀请码
+            QString bookName = dialog.getSelectedBook();
+            QString inviteCode = dialog.getInviteCode();
+
+            // 保存邀请码到账本信息中
+            for (int i = 0; i < m_books.size(); ++i) {
+                if (m_books[i].name == bookName) {
+                    m_books[i].inviteCode = inviteCode;
+                    break;
+                }
+            }
+            saveBooksToFile();
+
+            QMessageBox::information(this, "邀请成功",
+                                     QString("账本【%1】的邀请码是：%2\\\\n\\\\n请将邀请码发给好友").arg(bookName).arg(inviteCode));
+
+        } else {
+            // 加入模式：验证邀请码并加入
+            QString inputCode = dialog.getInviteCode();
+
+            // 查找匹配的账本
+            QString foundBook;
+            for (const BookInfo &book : m_books) {
+                if (book.inviteCode == inputCode) {
+                    foundBook = book.name;
+                    break;
+                }
+            }
+
+            if (foundBook.isEmpty()) {
+                QMessageBox::warning(this, "加入失败", "邀请码无效，请检查后重试");
+            } else {
+                QMessageBox::information(this, "加入成功", QString("您已成功加入账本【%1】").arg(foundBook));
+                // 刷新账本列表
+                loadAccountBooks();
+            }
+        }
+    }
 }
