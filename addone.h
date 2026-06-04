@@ -11,6 +11,7 @@ class AddOne;
 
 // 账目结构体，用于规范存储数据
 struct AccountRecord {
+    std::string bookName;
     std::string date;
     std::string type;
     std::string category;
@@ -32,8 +33,13 @@ private slots:
     void on_buttonBox_rejected(); // 对应 Cancel
 
 private:
-    Ui::AddOne *ui;
     QStringList getTopThreeRemarks();
+    void loadBookNames();                      // 添加：从 books.json 加载账本名称
+    void loadSelectedBook();                   // 添加：加载选中的账本
+    void updateBookRecordCount(const QString &bookName);  // 添加：更新账本记录条数
+
+private:
+    Ui::AddOne *ui;
     QString m_currentBookName;
 };
 

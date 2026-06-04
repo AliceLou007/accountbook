@@ -2,10 +2,17 @@
 #define BOOKDETAIL_H
 
 #include <QWidget>
+#include <QLabel>
 #include <QTableWidget>
 #include <QPushButton>
-#include <QLabel>
-#include <QShowEvent>
+
+struct RecordItem {
+    QString date;
+    QString type;
+    QString category;
+    double amount;
+    QString remark;
+};
 
 class BookDetail : public QWidget
 {
@@ -16,7 +23,7 @@ public:
     ~BookDetail();
 
 signals:
-    void backToManage();  // 返回管理界面的信号
+    void backToManage();
 
 protected:
     void showEvent(QShowEvent *event) override;
@@ -27,16 +34,21 @@ private slots:
 private:
     void setupUI();
     void loadRecords();
+    void updateStats(double totalIncome, double totalOutcome);
 
 private:
     QString m_bookName;
     QString m_remark;
     QStringList m_members;
-    QTableWidget *m_table;
-    QPushButton *m_btnBack;
+
     QLabel *m_nameLabel;
     QLabel *m_remarkLabel;
     QLabel *m_membersLabel;
+    QLabel *m_incomeLabel;
+    QLabel *m_outcomeLabel;
+    QLabel *m_balanceLabel;
+    QTableWidget *m_table;
+    QPushButton *m_btnBack;
 };
 
 #endif // BOOKDETAIL_H

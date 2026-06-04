@@ -1,5 +1,5 @@
 QT += widgets
-
+QT += core gui network
 CONFIG += c++17
 
 # You can make your code fail to compile if it uses deprecated APIs.
@@ -7,21 +7,27 @@ CONFIG += c++17
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    accountingserver.cpp \
     addone.cpp \
     bookdetail.cpp \
     createbookdialog.cpp \
     editbookdialog.cpp \
+    logindialog.cpp \
     main.cpp \
     manage.cpp \
+    networkclient.cpp \
     record.cpp \
     widget.cpp
 
 HEADERS += \
+    accountingserver.h \
     addone.h \
     bookdetail.h \
     createbookdialog.h \
     editbookdialog.h \
+    logindialog.h \
     manage.h \
+    networkclient.h \
     record.h \
     widget.h
 

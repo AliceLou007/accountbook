@@ -6,6 +6,10 @@
 #include <QMessageBox>
 #include <QDate>
 #include <QPalette>
+#include <QFile>
+#include <QTextStream>
+#include <QDir>
+#include <QDebug>
 
 BookDetail::BookDetail(const QString &bookName, const QString &remark, const QStringList &members, QWidget *parent)
     : QWidget(parent)
@@ -31,6 +35,9 @@ void BookDetail::showEvent(QShowEvent *event)
     pal.setColor(QPalette::Window, Qt::white);
     pal.setColor(QPalette::WindowText, Qt::black);
     this->setPalette(pal);
+
+    // 每次显示时重新加载数据
+    loadRecords();
 
     // 强制刷新整个窗口
     this->update();
@@ -94,6 +101,32 @@ void BookDetail::setupUI()
     infoLayout->addWidget(m_membersLabel);
     infoLayout->addStretch();
 
+    // ========== 统计信息行 ==========
+    QHBoxLayout *statsLayout = new QHBoxLayout();
+    statsLayout->setSpacing(20);
+
+    m_incomeLabel = new QLabel(this);
+    m_incomeLabel->setStyleSheet("font-size: 13px; color: #52c41a; font-weight: bold; background-color: #f6ffed; padding: 8px; border-radius: 5px;");
+    m_incomeLabel->setAlignment(Qt::AlignCenter);
+    m_incomeLabel->setFixedHeight(40);
+    m_incomeLabel->setText("收入: ¥0.00");
+
+    m_outcomeLabel = new QLabel(this);
+    m_outcomeLabel->setStyleSheet("font-size: 13px; color: #ff4d4f; font-weight: bold; background-color: #fff2f0; padding: 8px; border-radius: 5px;");
+    m_outcomeLabel->setAlignment(Qt::AlignCenter);
+    m_outcomeLabel->setFixedHeight(40);
+    m_outcomeLabel->setText("支出: ¥0.00");
+
+    m_balanceLabel = new QLabel(this);
+    m_balanceLabel->setStyleSheet("font-size: 13px; color: #8c1515; font-weight: bold; background-color: #fafafa; padding: 8px; border-radius: 5px;");
+    m_balanceLabel->setAlignment(Qt::AlignCenter);
+    m_balanceLabel->setFixedHeight(40);
+    m_balanceLabel->setText("结余: ¥0.00");
+
+    statsLayout->addWidget(m_incomeLabel);
+    statsLayout->addWidget(m_outcomeLabel);
+    statsLayout->addWidget(m_balanceLabel);
+
     // ========== 只有返回按钮 ==========
     QHBoxLayout *btnLayout = new QHBoxLayout();
 
@@ -133,7 +166,7 @@ void BookDetail::setupUI()
     m_table->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_table->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_table->setShowGrid(true);
-    m_table->setFixedHeight(500);
+    m_table->setFixedHeight(450);
     m_table->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
 
     m_table->setStyleSheet(
@@ -169,6 +202,8 @@ void BookDetail::setupUI()
     mainLayout->addWidget(titleLabel);
     mainLayout->addSpacing(10);
     mainLayout->addWidget(infoFrame);
+    mainLayout->addSpacing(10);
+    mainLayout->addLayout(statsLayout);
     mainLayout->addSpacing(15);
     mainLayout->addLayout(btnLayout);
     mainLayout->addSpacing(10);
@@ -179,7 +214,7 @@ void BookDetail::setupUI()
 
     setLayout(mainLayout);
 
-    // 只连接返回按钮
+    // 连接返回按钮
     connect(m_btnBack, &QPushButton::clicked, this, &BookDetail::onBack);
 }
 
@@ -187,21 +222,55 @@ void BookDetail::loadRecords()
 {
     m_table->setRowCount(0);
 
-    struct Record {
-        QString date;
-        QString type;
-        QString amount;
-        QString category;
-        QString remark;
-    };
+    double totalIncome = 0.0;
+    double totalOutcome = 0.0;
 
-    QList<Record> records = {
-                             {"2024-01-15", "支出", "128.00", "餐饮", "午饭"},
-                             {"2024-01-16", "收入", "5000.00", "工资", "1月工资"},
-                             {"2024-01-17", "支出", "45.00", "交通", "地铁充值"},
-                             {"2024-01-18", "支出", "267.00", "购物", "超市购物"},
-                             };
+    // 从真实的账本数据文件读取
+    QString fileName = QString("%1_data.txt").arg(m_bookName);
+    QString filePath = QDir::currentPath() + "/" + fileName;
+    QFile file(filePath);
 
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qDebug() << "无法打开账本文件:" << filePath;
+        // 更新统计显示为0
+        updateStats(totalIncome, totalOutcome);
+        return;
+    }
+
+    QTextStream in(&file);
+    QList<RecordItem> records;
+
+    while (!in.atEnd()) {
+        QString line = in.readLine();
+        QStringList parts = line.split(",");
+
+        if (parts.size() >= 6) {
+            RecordItem item;
+            // 格式: 账本名称,日期,类型,分类,金额,备注
+            item.date = parts[1].trimmed();
+            item.type = parts[2].trimmed();
+            item.category = parts[3].trimmed();
+            item.amount = parts[4].toDouble();
+            item.remark = parts[5].trimmed();
+
+            records.append(item);
+
+            // 计算统计
+            if (item.type == "收入") {
+                totalIncome += item.amount;
+            } else if (item.type == "支出") {
+                totalOutcome += item.amount;
+            }
+        }
+    }
+    file.close();
+
+    // 按日期倒序排序（最新的在前）
+    std::sort(records.begin(), records.end(), [](const RecordItem& a, const RecordItem& b) {
+        return a.date > b.date;
+    });
+
+    // 显示记录
     for (int i = 0; i < records.size(); ++i) {
         m_table->insertRow(i);
 
@@ -211,8 +280,15 @@ void BookDetail::loadRecords()
         QTableWidgetItem *typeItem = new QTableWidgetItem(records[i].type);
         typeItem->setTextAlignment(Qt::AlignCenter);
 
-        QTableWidgetItem *amountItem = new QTableWidgetItem("¥" + records[i].amount);
+        // 收入和支出用不同颜色
+        QString amountStr = QString("¥%1").arg(records[i].amount, 0, 'f', 2);
+        QTableWidgetItem *amountItem = new QTableWidgetItem(amountStr);
         amountItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        if (records[i].type == "收入") {
+            amountItem->setForeground(QColor(82, 196, 26));  // 绿色
+        } else {
+            amountItem->setForeground(QColor(255, 77, 79));  // 红色
+        }
 
         QTableWidgetItem *categoryItem = new QTableWidgetItem(records[i].category);
         categoryItem->setTextAlignment(Qt::AlignCenter);
@@ -227,10 +303,29 @@ void BookDetail::loadRecords()
     }
 
     m_table->verticalHeader()->setDefaultSectionSize(45);
+
+    // 更新统计显示
+    updateStats(totalIncome, totalOutcome);
+}
+
+void BookDetail::updateStats(double totalIncome, double totalOutcome)
+{
+    double balance = totalIncome - totalOutcome;
+
+    m_incomeLabel->setText(QString("💰 收入: ¥%1").arg(totalIncome, 0, 'f', 2));
+    m_outcomeLabel->setText(QString("💸 支出: ¥%1").arg(totalOutcome, 0, 'f', 2));
+    m_balanceLabel->setText(QString("📊 结余: ¥%1").arg(balance, 0, 'f', 2));
+
+    // 结余为正数时绿色，负数时红色
+    if (balance >= 0) {
+        m_balanceLabel->setStyleSheet("font-size: 13px; color: #52c41a; font-weight: bold; background-color: #f6ffed; padding: 8px; border-radius: 5px;");
+    } else {
+        m_balanceLabel->setStyleSheet("font-size: 13px; color: #ff4d4f; font-weight: bold; background-color: #fff2f0; padding: 8px; border-radius: 5px;");
+    }
 }
 
 void BookDetail::onBack()
 {
-    emit backToManage();  // 发送信号而不是直接关闭
+    emit backToManage();  // 发送信号
     this->hide();  // 隐藏当前页面
 }

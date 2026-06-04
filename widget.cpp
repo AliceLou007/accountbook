@@ -24,6 +24,8 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
+#include <QPainter>
+#include <QPainterPath>
 
 Widget::Widget(QWidget *parent)
     : QWidget(parent)
@@ -180,12 +182,13 @@ void Widget::loadAndCalculateAllData()
 
         QStringList tokens = line.split(",");
 
-        if (tokens.size() >= 5) {
-            QString qDate = tokens[0];
-            QString qType = tokens[1];
-            QString qCategory = tokens[2];
-            double amount = tokens[3].toDouble();
-            QString qComment = tokens[4];
+        if (tokens.size() >= 6) {
+            QString qBook = tokens[0];      //先写了一个死的顶一下，后面在连账本文件
+            QString qDate = tokens[1];
+            QString qType = tokens[2];
+            QString qCategory = tokens[3];
+            double amount = tokens[4].toDouble();
+            QString qComment = tokens[5];
 
             QString yearMonthKey = qDate.left(7).replace("/", "-");
 
@@ -368,8 +371,8 @@ void Widget::updateUserInfoDisplay()
 {
     // 更新头像显示
     if (!m_userAvatar.isNull()) {
-        QPixmap scaledAvatar = m_userAvatar.scaled(76, 76, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-        m_avatarLabel->setPixmap(scaledAvatar);
+        // 头像已经是圆形的，直接显示
+        m_avatarLabel->setPixmap(m_userAvatar);
         m_avatarLabel->setText("");
         m_avatarLabel->setStyleSheet(
             "QLabel {"
@@ -379,7 +382,7 @@ void Widget::updateUserInfoDisplay()
             "}"
             );
     } else {
-        m_avatarLabel->setText("👤");
+        m_avatarLabel->setText("??");
         m_avatarLabel->setStyleSheet(
             "QLabel {"
             "   background-color: #f0f0f0;"
@@ -404,7 +407,7 @@ void Widget::updateUserInfoDisplay()
     } else if (m_userGender == "女") {
         genderText = "♀ 女";
     } else {
-        genderText = "⚪ 保密";
+        genderText = "? 保密";
     }
     m_genderLabel->setText(genderText);
 }
@@ -441,40 +444,67 @@ void Widget::onEditProfile()
     dialog.setStyleSheet("background-color: white;");
 
     QVBoxLayout *layout = new QVBoxLayout(&dialog);
+    layout->setSpacing(10);
+    layout->setContentsMargins(30, 30, 30, 30);
 
     // ID（只读显示）
+    QHBoxLayout *idLayout = new QHBoxLayout();
     QLabel *idLabel = new QLabel("ID：");
+    idLabel->setFixedWidth(80);
+    idLabel->setStyleSheet("font-size: 14px; color: #333333;");
     QLineEdit *idEdit = new QLineEdit(m_userId);
     idEdit->setReadOnly(true);
-    idEdit->setStyleSheet("QLineEdit { color: black; background-color: #f5f5f5; }");
+    idEdit->setStyleSheet("QLineEdit { color: black; background-color: #f5f5f5; padding: 6px; border: 1px solid #d0d0d0; border-radius: 4px; }");
+    idLayout->addWidget(idLabel);
+    idLayout->addWidget(idEdit);
 
-    // 姓名
-    QLabel *nameLabel = new QLabel("姓名：");
+    // 昵称
+    QHBoxLayout *nameLayout = new QHBoxLayout();
+    QLabel *nameLabel = new QLabel("昵称：");
+    nameLabel->setFixedWidth(80);
+    nameLabel->setStyleSheet("font-size: 14px; color: #333333;");
     QLineEdit *nameEdit = new QLineEdit(m_userName);
-    nameEdit->setPlaceholderText("请输入姓名");
-    nameEdit->setStyleSheet("QLineEdit { color: black; }");
+    nameEdit->setPlaceholderText("请输入昵称");
+    nameEdit->setStyleSheet("QLineEdit { color: black; padding: 6px; border: 1px solid #d0d0d0; border-radius: 4px; }");  // 添加 color: black;
+    nameLayout->addWidget(nameLabel);
+    nameLayout->addWidget(nameEdit);
 
     // 年龄
+    QHBoxLayout *ageLayout = new QHBoxLayout();
     QLabel *ageLabel = new QLabel("年龄：");
+    ageLabel->setFixedWidth(80);
+    ageLabel->setStyleSheet("font-size: 14px; color: #333333;");
     QLineEdit *ageEdit = new QLineEdit(QString::number(m_userAge));
     ageEdit->setPlaceholderText("请输入年龄");
-    ageEdit->setStyleSheet("QLineEdit { color: black; }");
+    ageEdit->setStyleSheet("QLineEdit { color: black; padding: 6px; border: 1px solid #d0d0d0; border-radius: 4px; }");  // 添加 color: black;
+    ageLayout->addWidget(ageLabel);
+    ageLayout->addWidget(ageEdit);
 
     // 性别
+    QHBoxLayout *genderLayout = new QHBoxLayout();
     QLabel *genderLabel = new QLabel("性别：");
+    genderLabel->setFixedWidth(80);
+    genderLabel->setStyleSheet("font-size: 14px; color: #333333;");
     QComboBox *genderCombo = new QComboBox();
     genderCombo->addItems({"保密", "男", "女"});
     int index = genderCombo->findText(m_userGender);
     if (index >= 0) genderCombo->setCurrentIndex(index);
-    genderCombo->setStyleSheet("QComboBox { color: black; } QComboBox QAbstractItemView { color: black; }");
+    genderCombo->setStyleSheet("QComboBox { color: black; padding: 6px; border: 1px solid #d0d0d0; border-radius: 4px; } QComboBox QAbstractItemView { color: black; }");  // 添加 color: black;
+    genderLayout->addWidget(genderLabel);
+    genderLayout->addWidget(genderCombo);
 
     // 个性签名
+    QVBoxLayout *sigLayout = new QVBoxLayout();
     QLabel *sigLabel = new QLabel("个性签名：");
+    sigLabel->setStyleSheet("font-size: 14px; color: #333333;");
     QTextEdit *sigEdit = new QTextEdit();
     sigEdit->setText(m_userSignature);
-    sigEdit->setMaximumHeight(80);
-    sigEdit->setStyleSheet("QTextEdit { color: black; }");
+    sigEdit->setMaximumHeight(100);
+    sigEdit->setStyleSheet("QTextEdit { color: black; padding: 6px; border: 1px solid #d0d0d0; border-radius: 4px; }");  // 添加 color: black;
+    sigLayout->addWidget(sigLabel);
+    sigLayout->addWidget(sigEdit);
 
+    // 按钮
     QHBoxLayout *btnLayout = new QHBoxLayout();
     QPushButton *saveBtn = new QPushButton("保存");
     QPushButton *cancelBtn = new QPushButton("取消");
@@ -485,7 +515,8 @@ void Widget::onEditProfile()
         "   color: #444444;"
         "   border: 1px solid #d0d0d0;"
         "   border-radius: 5px;"
-        "   padding: 6px 20px;"
+        "   padding: 8px 25px;"
+        "   font-size: 14px;"
         "}"
         "QPushButton:hover {"
         "   background-color: rgba(140, 21, 21, 0.15);"
@@ -499,20 +530,16 @@ void Widget::onEditProfile()
     btnLayout->addWidget(saveBtn);
     btnLayout->addWidget(cancelBtn);
 
-    layout->addWidget(idLabel);
-    layout->addWidget(idEdit);
+    // 添加到主布局
+    layout->addLayout(idLayout);
     layout->addSpacing(10);
-    layout->addWidget(nameLabel);
-    layout->addWidget(nameEdit);
+    layout->addLayout(nameLayout);
     layout->addSpacing(10);
-    layout->addWidget(ageLabel);
-    layout->addWidget(ageEdit);
+    layout->addLayout(ageLayout);
     layout->addSpacing(10);
-    layout->addWidget(genderLabel);
-    layout->addWidget(genderCombo);
+    layout->addLayout(genderLayout);
     layout->addSpacing(10);
-    layout->addWidget(sigLabel);
-    layout->addWidget(sigEdit);
+    layout->addLayout(sigLayout);
     layout->addStretch();
     layout->addLayout(btnLayout);
 
@@ -541,6 +568,38 @@ void Widget::onEditProfile()
     dialog.exec();
 }
 
+// 圆形头像裁剪函数
+QPixmap Widget::getCircularAvatar(const QPixmap& source)
+{
+    int size = qMin(source.width(), source.height());
+
+    // 先裁剪为正方形
+    QPixmap square = source.copy(
+        (source.width() - size) / 2,
+        (source.height() - size) / 2,
+        size, size
+        );
+
+    // 缩放到目标尺寸
+    int targetSize = 80;  // 头像显示大小
+    QPixmap scaled = square.scaled(targetSize, targetSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+
+    // 创建圆形遮罩
+    QPixmap circular(targetSize, targetSize);
+    circular.fill(Qt::transparent);
+
+    QPainter painter(&circular);
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setBrush(QBrush(scaled));
+    painter.setPen(Qt::NoPen);
+
+    // 绘制圆形
+    painter.drawEllipse(0, 0, targetSize, targetSize);
+    painter.end();
+
+    return circular;
+}
+
 void Widget::onChangeAvatar()
 {
     QString filePath = QFileDialog::getOpenFileName(this,
@@ -551,7 +610,8 @@ void Widget::onChangeAvatar()
     if (!filePath.isEmpty()) {
         QPixmap avatar(filePath);
         if (!avatar.isNull()) {
-            m_userAvatar = avatar;
+            // 裁剪为正方形并生成圆形头像
+            m_userAvatar = getCircularAvatar(avatar);
             updateUserInfoDisplay();
             saveUserProfile();
             QMessageBox::information(this, "提示", "头像已更换！");

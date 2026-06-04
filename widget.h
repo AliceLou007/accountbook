@@ -45,6 +45,7 @@ private slots:
     void onLogout();         // 退出登录
 
 private:
+    QPixmap getCircularAvatar(const QPixmap& source);  // 圆形裁剪函数
     void updateHomeUi(const QString &yearMonth);
     void loadAndCalculateAllData();
     void updateSidebarStyle(QPushButton* activeBtn);

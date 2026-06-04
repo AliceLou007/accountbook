@@ -5,17 +5,22 @@
 #include <QFile>
 #include <QTextStream>
 #include <QCoreApplication>
+#include <QDir>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QJsonObject>
 
 AddOne::AddOne(QWidget *parent) :
-    QDialog(parent), // 父类初始化
+    QDialog(parent),
     ui(new Ui::AddOne)
 {
     ui->setupUi(this);
+
     // 用 C++ 代码直接给整个弹窗设置 QSS 样式
     this->setStyleSheet(
         "QDialog {"
-        "   background-color: #ffffff;" // 纯白背景
-        "   border-radius: 12px;"       // 圆角
+        "   background-color: #ffffff;"
+        "   border-radius: 12px;"
         "}"
         "QLineEdit {"
         "   border: 1px solid #e0e0e0;"
@@ -24,21 +29,21 @@ AddOne::AddOne(QWidget *parent) :
         "   background-color: #fcfcfc;"
         "}"
         "QLineEdit:focus {"
-        "   border: 1.5px solid #8c1515;" // 聚焦时变成北大红
+        "   border: 1.5px solid #8c1515;"
         "}"
         );
 
-    // 1. 设置固定大小（防止弹窗变形）
     this->setFixedSize(400, 350);
-
-    // 这一行会让弹窗内所有控件的文字都变成 16px，并使用微软雅黑字体
     this->setStyleSheet("font-size: 16px; font-family: 'Microsoft YaHei';");
 
-    // 2. 自动化加载：在程序启动时，自动往下拉框塞入“支出”和“收入”
+    // 加载账本列表
+    loadBookNames();
+
     ui->comboType->clear();
     ui->comboType->addItem("支出");
     ui->comboType->addItem("收入");
-    //先让新的分类下拉框初始化（默认塞入支出分类）
+
+    // 初始化分类下拉框
     ui->comboCategory->clear();
     ui->comboCategory->addItems(QStringList() << "餐饮" << "购物" << "日用" << "交通" << "娱乐" << "医疗" << "其他");
 
@@ -47,7 +52,6 @@ AddOne::AddOne(QWidget *parent) :
     ui->lineEditComment->addItems(getTopThreeRemarks());
     ui->lineEditComment->setCurrentText("");
 
-    //直接绑架你原本就有的那个大类选择框（假设叫 comboType）
     connect(ui->comboType, &QComboBox::currentTextChanged, this, [=](const QString &type){
         ui->comboCategory->clear();
         if (type == "支出") {
@@ -64,55 +68,208 @@ AddOne::~AddOne()
     delete ui;
 }
 
-// 当点击 OK 按钮时触发
-void AddOne::on_buttonBox_accepted()
+// 从 books.json 加载账本名称
+void AddOne::loadBookNames()
 {
-    // 1. 检查输入合法性（先做检查，如果不合法直接拦截，省去后面所有无用功）
-    QString category = ui->comboCategory->currentText();
-    double amount = ui->lineEditAmount->text().toDouble();
+    ui->comboBook->clear();
 
-    if (category.isEmpty() || amount <= 0) {
-        QMessageBox::warning(this, "提示", "请填写完整的分类和正确的金额！");
-        return; // 被拦截，不关闭弹窗，不写入文件
-    }
-
-    // 2. 使用 Qt 的组件进行写入，彻底消灭中文乱码和路径错位问题
-    // 使用 applicationDirPath() 确保主界面和弹窗读写的是【同一个绝对路径】下的 data.txt
-    QString filePath = QCoreApplication::applicationDirPath() + "/data.txt";
+    QString filePath = QDir::currentPath() + "/books.json";
     QFile file(filePath);
 
-    // 以追加模式(Append)和文本模式(Text)打开
-    if (file.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
-        QTextStream out(&file);
-
-        // 用逗号 `,` 分隔。备注如果为空，默认写“无”
-        QString comment = ui->lineEditComment->currentText();
-        if (comment.isEmpty()) comment = "无";
-
-        // 啪！整整齐齐写进文件，Qt 会在后台自动处理好所有中文编码，绝对不会乱码
-        out << ui->dateEdit->date().toString("yyyy-MM-dd") << ","
-            << ui->comboType->currentText() << ","
-            << category << ","
-            << amount << ","
-            << comment << "\\\\n";
-
-        file.close();
-    } else {
-        QMessageBox::critical(this, "错误", "无法打开或创建账本文件！");
+    if (!file.exists()) {
+        // 如果没有账本文件，添加默认账本
+        ui->comboBook->addItem("我的账本");
         return;
     }
 
-    // 3. 完美的闭环：关闭弹窗，通知主界面变亮并刷新
+    if (!file.open(QIODevice::ReadOnly)) {
+        qDebug() << "无法打开 books.json";
+        ui->comboBook->addItem("我的账本");
+        return;
+    }
+
+    QByteArray data = file.readAll();
+    file.close();
+
+    QJsonDocument doc = QJsonDocument::fromJson(data);
+    if (!doc.isArray()) {
+        ui->comboBook->addItem("我的账本");
+        return;
+    }
+
+    QJsonArray array = doc.array();
+    if (array.isEmpty()) {
+        ui->comboBook->addItem("我的账本");
+        return;
+    }
+
+    // 添加所有账本名称
+    for (const QJsonValue &value : array) {
+        QJsonObject obj = value.toObject();
+        QString bookName = obj["name"].toString();
+        if (!bookName.isEmpty()) {
+            ui->comboBook->addItem(bookName);
+        }
+    }
+
+    // 尝试加载选中的账本
+    loadSelectedBook();
+}
+
+// 加载选中的账本
+void AddOne::loadSelectedBook()
+{
+    QString filePath = QDir::currentPath() + "/selected_book.json";
+    QFile file(filePath);
+
+    if (!file.exists()) {
+        return;
+    }
+
+    if (!file.open(QIODevice::ReadOnly)) {
+        return;
+    }
+
+    QByteArray data = file.readAll();
+    file.close();
+
+    QJsonDocument doc = QJsonDocument::fromJson(data);
+    if (!doc.isObject()) {
+        return;
+    }
+
+    QJsonObject obj = doc.object();
+    QString savedBookName = obj["selectedBookName"].toString();
+
+    if (!savedBookName.isEmpty()) {
+        int index = ui->comboBook->findText(savedBookName);
+        if (index >= 0) {
+            ui->comboBook->setCurrentIndex(index);
+        }
+    }
+}
+
+// 当点击 OK 按钮时触发
+void AddOne::on_buttonBox_accepted()
+{
+    // 检查输入合法性
+    QString category = ui->comboCategory->currentText();
+    double amount = ui->lineEditAmount->text().toDouble();
+    QString selectedBook = ui->comboBook->currentText();
+
+    if (selectedBook.isEmpty()) {
+        QMessageBox::warning(this, "提示", "请选择一个账本！");
+        return;
+    }
+
+    if (category.isEmpty() || amount <= 0) {
+        QMessageBox::warning(this, "提示", "请填写完整的分类和正确的金额！");
+        return;
+    }
+
+    // 使用账本名称作为文件名
+    QString fileName = QString("%1_data.txt").arg(selectedBook);
+    QString filePath = QDir::currentPath() + "/" + fileName;
+    QFile file(filePath);
+
+    // 以追加模式打开
+    if (file.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
+        QTextStream out(&file);
+
+        QString comment = ui->lineEditComment->currentText();
+        if (comment.isEmpty()) comment = "无";
+
+        // 格式: 账本名称,日期,类型,分类,金额,备注
+        out << selectedBook << ","
+            << ui->dateEdit->date().toString("yyyy-MM-dd") << ","
+            << ui->comboType->currentText() << ","
+            << category << ","
+            << amount << ","
+            << comment << "\n";
+
+        file.close();
+
+        // 更新该账本的记录条数
+        updateBookRecordCount(selectedBook);
+
+    } else {
+        QMessageBox::critical(this, "错误", QString("无法打开或创建账本文件：%1").arg(fileName));
+        return;
+    }
+
+    // 关闭弹窗
     this->accept();
 }
 
+// 更新账本的记录条数
+void AddOne::updateBookRecordCount(const QString &bookName)
+{
+    QString booksFilePath = QDir::currentPath() + "/books.json";
+    QFile booksFile(booksFilePath);
+
+    if (!booksFile.open(QIODevice::ReadOnly)) {
+        return;
+    }
+
+    QByteArray data = booksFile.readAll();
+    booksFile.close();
+
+    QJsonDocument doc = QJsonDocument::fromJson(data);
+    if (!doc.isArray()) {
+        return;
+    }
+
+    QJsonArray array = doc.array();
+
+    // 统计该账本的记录条数
+    QString dataFileName = QString("%1_data.txt").arg(bookName);
+    QString dataFilePath = QDir::currentPath() + "/" + dataFileName;
+    QFile dataFile(dataFilePath);
+
+    int recordCount = 0;
+    if (dataFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QTextStream in(&dataFile);
+        while (!in.atEnd()) {
+            QString line = in.readLine().trimmed();
+            if (!line.isEmpty()) {
+                recordCount++;
+            }
+        }
+        dataFile.close();
+    }
+
+    // 更新 books.json 中的记录条数
+    for (int i = 0; i < array.size(); ++i) {
+        QJsonObject obj = array[i].toObject();
+        if (obj["name"].toString() == bookName) {
+            obj["recordCount"] = recordCount;
+            array[i] = obj;
+            break;
+        }
+    }
+
+    // 保存更新后的数据
+    if (booksFile.open(QIODevice::WriteOnly)) {
+        QJsonDocument newDoc(array);
+        booksFile.write(newDoc.toJson());
+        booksFile.close();
+    }
+}
 
 QStringList AddOne::getTopThreeRemarks() {
-    QFile file("data.txt"); // 确认你的 data.txt 路径正确
+    // 获取当前选中的账本
+    QString selectedBook = ui->comboBook->currentText();
+    if (selectedBook.isEmpty()) {
+        return QStringList();
+    }
+
+    QString fileName = QString("%1_data.txt").arg(selectedBook);
+    QString filePath = QDir::currentPath() + "/" + fileName;
+    QFile file(filePath);
     QMap<QString, int> remarkCount;
 
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        qDebug() << "打不开 data.txt 啦！";
+        qDebug() << "打不开账本文件：" << filePath;
         return QStringList();
     }
 
@@ -120,17 +277,16 @@ QStringList AddOne::getTopThreeRemarks() {
     while (!in.atEnd()) {
         QString line = in.readLine();
         QStringList parts = line.split(",");
-        if (parts.size() >= 4) {
-            QString remark = parts[2].trimmed();
-            if (!remark.isEmpty()) {
+        if (parts.size() >= 6) {
+            QString remark = parts[5].trimmed();
+
+            if (!remark.isEmpty() && remark != "无" && remark != "\n" && remark != "\n") {
                 remarkCount[remark]++;
             }
         }
     }
     file.close();
 
-    // 接下来：把 Map 里的数据按照出现次数进行降序排序
-    // 我们可以把它们倒腾到一个 QList 里方便用 std::sort
     QList<QPair<QString, int>> sortedList;
     for (auto it = remarkCount.begin(); it != remarkCount.end(); ++it) {
         sortedList.append(qMakePair(it.key(), it.value()));
@@ -148,9 +304,7 @@ QStringList AddOne::getTopThreeRemarks() {
     return topThree;
 }
 
-// 当用户点击了 Button Box 里的 “Cancel” 或者 “取消” 按钮时
 void AddOne::on_buttonBox_rejected()
 {
-    // 直接关闭弹窗，撤走黑幕布，不保存任何东西
     this->reject();
 }

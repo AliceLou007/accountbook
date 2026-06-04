@@ -12,6 +12,7 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QTimer>
 #include <QPushButton>
 #include <QDate>
 #include <QFile>
@@ -32,6 +33,17 @@ Manage::Manage(QWidget *parent)
     loadSelectedBook();
     loadAccountBooks();
     setupTableHover();
+    // 在 Manage 构造函数末尾，替换之前的网络连接代码为：
+    NetworkClient* client = NetworkClient::getInstance();
+    connect(client, &NetworkClient::connected, this, &Manage::onConnected);
+    connect(client, &NetworkClient::disconnected, this, &Manage::onDisconnected);
+    connect(client, &NetworkClient::errorOccurred, this, &Manage::onError);
+    connect(client, &NetworkClient::createBookResult, this, &Manage::onCreateBookResult);
+    connect(client, &NetworkClient::joinBookResult, this, &Manage::onJoinBookResult);
+    connect(client, &NetworkClient::getBooksResult, this, &Manage::onGetBooksResult);
+    connect(client, &NetworkClient::memberJoined, this, &Manage::onMemberJoined);
+    connect(client, &NetworkClient::memberLeft, this, &Manage::onMemberLeft);
+    connect(client, &NetworkClient::newRecord, this, &Manage::onNewRecord);
 }
 
 Manage::~Manage()
@@ -201,6 +213,20 @@ void Manage::setupUI()
     manageLayout->addSpacing(10);
     manageLayout->addWidget(m_table);
     manageLayout->addStretch();
+    // 在 manageLayout->addWidget(m_table); 之后添加
+
+    // 添加滚动提示
+    QLabel *scrollHint = new QLabel("?? 提示：列表支持滚动，可上下滑动查看更多账本", m_managePage);
+    scrollHint->setStyleSheet(
+        "QLabel {"
+        "   font-size: 11px;"
+        "   color: #999999;"
+        "   background-color: transparent;"
+        "   padding: 5px;"
+        "}"
+        );
+    scrollHint->setAlignment(Qt::AlignCenter);
+    manageLayout->addWidget(scrollHint);
 
     // ========== 创建详情页面 ==========
     m_detailPage = nullptr;
@@ -229,14 +255,24 @@ void Manage::loadBooksFromFile()
     QFile file(filePath);
 
     if (!file.exists()) {
+        // 文件不存在，创建默认账本
         BookInfo defaultBook;
         defaultBook.name = "我的账本";
         defaultBook.createTime = QDate::currentDate().toString("yyyy-MM-dd");
         defaultBook.memberCount = 1;
         defaultBook.recordCount = 0;
         defaultBook.remark = "默认账本";
+        defaultBook.isDefault = true;  // 标记为默认账本
         m_books.append(defaultBook);
         saveBooksToFile();
+
+        // 创建对应的数据文件
+        QString dataFileName = "我的账本_data.txt";
+        if (!QFile::exists(dataFileName)) {
+            QFile dataFile(dataFileName);
+            dataFile.open(QIODevice::WriteOnly);
+            dataFile.close();
+        }
         return;
     }
 
@@ -255,6 +291,8 @@ void Manage::loadBooksFromFile()
 
     m_books.clear();
     QJsonArray array = doc.array();
+    bool hasDefault = false;
+
     for (const QJsonValue &value : array) {
         QJsonObject obj = value.toObject();
         BookInfo book;
@@ -263,7 +301,35 @@ void Manage::loadBooksFromFile()
         book.memberCount = obj["memberCount"].toInt();
         book.recordCount = obj["recordCount"].toInt();
         book.remark = obj["remark"].toString();
+        book.isDefault = obj["isDefault"].toBool(false);  // 读取是否为默认账本
+
+        if (book.name == "我的账本") {
+            book.isDefault = true;
+            hasDefault = true;
+        }
         m_books.append(book);
+    }
+
+    // 如果没有默认账本，添加一个
+    if (!hasDefault) {
+        BookInfo defaultBook;
+        defaultBook.name = "我的账本";
+        defaultBook.createTime = QDate::currentDate().toString("yyyy-MM-dd");
+        defaultBook.memberCount = 1;
+        defaultBook.recordCount = 0;
+        defaultBook.remark = "默认账本";
+        defaultBook.isDefault = true;
+        m_books.prepend(defaultBook);  // 放在最前面
+
+        // 创建对应的数据文件
+        QString dataFileName = "我的账本_data.txt";
+        if (!QFile::exists(dataFileName)) {
+            QFile dataFile(dataFileName);
+            dataFile.open(QIODevice::WriteOnly);
+            dataFile.close();
+        }
+
+        saveBooksToFile();
     }
 }
 
@@ -285,6 +351,7 @@ void Manage::saveBooksToFile()
         obj["memberCount"] = book.memberCount;
         obj["recordCount"] = book.recordCount;
         obj["remark"] = book.remark;
+        obj["isDefault"] = book.isDefault;  // 保存是否为默认账本
         array.append(obj);
     }
 
@@ -363,6 +430,9 @@ void Manage::loadSelectedBook()
             m_selectedRow = -1;
         }
     }
+
+    // 更新当前账本按钮文字
+    updateCurrentBookLabel();
 }
 
 void Manage::setupTableHover()
@@ -383,6 +453,7 @@ bool Manage::eventFilter(QObject *obj, QEvent *event)
         int row = m_table->rowAt(pos.y());
 
         if (row != m_hoverRow) {
+            // 恢复之前的悬停行
             if (m_hoverRow >= 0 && m_hoverRow < m_table->rowCount()) {
                 for (int col = 0; col < m_table->columnCount(); ++col) {
                     QTableWidgetItem *item = m_table->item(m_hoverRow, col);
@@ -399,12 +470,19 @@ bool Manage::eventFilter(QObject *obj, QEvent *event)
 
             m_hoverRow = row;
 
-            if (m_hoverRow >= 0 && m_hoverRow < m_table->rowCount() && m_hoverRow != m_selectedRow) {
-                QColor hoverColor(140, 21, 21, 30);
+            // 设置新的悬停行（包括当前账本行也要变色）
+            if (m_hoverRow >= 0 && m_hoverRow < m_table->rowCount()) {
+                QColor hoverColor(140, 21, 21, 30);  // 半透明红色
                 for (int col = 0; col < m_table->columnCount(); ++col) {
                     QTableWidgetItem *item = m_table->item(m_hoverRow, col);
                     if (item) {
                         item->setBackground(hoverColor);
+                        // 悬停时文字保持原来的颜色
+                        if (m_hoverRow == m_selectedRow && col == 0) {
+                            item->setForeground(QColor(140, 21, 21));
+                        } else {
+                            item->setForeground(Qt::black);
+                        }
                     }
                 }
             }
@@ -454,12 +532,21 @@ void Manage::onCreateBook()
         newBook.name = bookName;
         newBook.createTime = QDate::currentDate().toString("yyyy-MM-dd");
         newBook.memberCount = 1;
-        newBook.recordCount = 0;
+        newBook.recordCount = 0;  // 新账本记录数为0
         newBook.remark = remark;
 
         m_books.append(newBook);
+
+        // 创建对应的数据文件（空文件）
+        QString dataFileName = QString("%1_data.txt").arg(bookName);
+        QFile dataFile(dataFileName);
+        if (!dataFile.exists()) {
+            dataFile.open(QIODevice::WriteOnly);
+            dataFile.close();
+        }
+
         saveBooksToFile();
-        loadAccountBooks();
+        loadAccountBooks();  // 这会重新统计并显示
 
         QMessageBox::information(this, "创建成功", QString("账本 \"%1\" 创建成功！").arg(bookName));
     }
@@ -467,12 +554,47 @@ void Manage::onCreateBook()
 
 void Manage::onInviteMember()
 {
-    int currentRow = m_table->currentRow();
-    if (currentRow >= 0) {
-        QString bookName = m_table->item(currentRow, 0)->text();
-        QMessageBox::information(this, "加入成员", QString("邀请成员加入账本：%1").arg(bookName));
-    } else {
-        QMessageBox::warning(this, "提示", "请先选择一个账本");
+    NetworkClient* client = NetworkClient::getInstance();
+
+    // 如果未连接，尝试连接
+    if (!client->isConnected()) {
+        QMessageBox::StandardButton reply = QMessageBox::question(
+            this,
+            "连接服务器",
+            "未连接到服务器，是否尝试连接？\\\\n请确保服务器程序已运行。",
+            QMessageBox::Yes | QMessageBox::No
+            );
+
+        if (reply == QMessageBox::Yes) {
+            client->connectToServer("127.0.0.1", 8888);
+
+            // 等待2秒看是否连接成功
+            QEventLoop loop;
+            QTimer::singleShot(2000, &loop, &QEventLoop::quit);
+            loop.exec();
+
+            if (!client->isConnected()) {
+                QMessageBox::warning(this, "连接失败",
+                                     "无法连接到服务器，请检查：\\\\n"
+                                     "1. 服务器程序是否已启动\\\\n"
+                                     "2. 端口8888是否被占用\\\\n"
+                                     "3. 防火墙是否允许连接");
+                return;
+            }
+        } else {
+            return;
+        }
+    }
+
+    CreateBookDialog dialog(this);
+    dialog.setWindowTitle("创建多人账本");
+
+    if (dialog.exec() == QDialog::Accepted) {
+        QString bookName = dialog.getBookName();
+        QString remark = dialog.getRemark();
+
+        client->createBook(bookName, remark);
+        QMessageBox::information(this, "提示", "正在创建多人账本，请稍候...");
     }
 }
 
@@ -513,7 +635,7 @@ void Manage::onCurrentBookClicked()
                 m_selectedRow = i;
                 updateCurrentBookLabel();
                 loadAccountBooks();
-                saveSelectedBook();
+                saveSelectedBook();  // 保存选中的账本到文件
                 QMessageBox::information(this, "切换成功", QString("已切换到账本：%1").arg(selectedBook));
                 break;
             }
@@ -523,14 +645,36 @@ void Manage::onCurrentBookClicked()
 
 void Manage::loadAccountBooks()
 {
+    // 先更新每个账本的记录条数
+    for (int i = 0; i < m_books.size(); ++i) {
+        QString dataFileName = QString("%1_data.txt").arg(m_books[i].name);
+        QFile dataFile(dataFileName);
+
+        int recordCount = 0;
+        if (dataFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            QTextStream in(&dataFile);
+            while (!in.atEnd()) {
+                QString line = in.readLine().trimmed();
+                if (!line.isEmpty()) {
+                    recordCount++;
+                }
+            }
+            dataFile.close();
+        }
+        m_books[i].recordCount = recordCount;
+    }
+
+    saveBooksToFile();
+
     m_table->setRowCount(0);
 
     for (int i = 0; i < m_books.size(); ++i) {
         m_table->insertRow(i);
 
+        // 当前账本显示红色竖杠
         QString displayName = m_books[i].name;
         if (i == m_selectedRow) {
-            displayName = "❙ " + m_books[i].name;
+            displayName = "? " + m_books[i].name;  // 红色竖杠
         }
 
         QTableWidgetItem *nameItem = new QTableWidgetItem(displayName);
@@ -538,7 +682,11 @@ void Manage::loadAccountBooks()
         nameItem->setBackground(Qt::white);
 
         if (i == m_selectedRow) {
-            nameItem->setForeground(QColor(140, 21, 21));
+            nameItem->setForeground(QColor(140, 21, 21));  // 红色文字
+            // 设置字体加粗
+            QFont font = nameItem->font();
+            font.setBold(true);
+            nameItem->setFont(font);
         } else {
             nameItem->setForeground(Qt::black);
         }
@@ -553,7 +701,7 @@ void Manage::loadAccountBooks()
         memberItem->setForeground(Qt::black);
         memberItem->setBackground(Qt::white);
 
-        QTableWidgetItem *countItem = new QTableWidgetItem(QString::number(m_books[i].recordCount));
+        QTableWidgetItem *countItem = new QTableWidgetItem(QString::number(m_books[i].recordCount) + " 条");
         countItem->setTextAlignment(Qt::AlignCenter);
         countItem->setForeground(Qt::black);
         countItem->setBackground(Qt::white);
@@ -616,6 +764,14 @@ void Manage::onEditBook()
 
     BookInfo &book = m_books[m_currentRightClickRow];
 
+    // 检查是否为默认账本
+    if (book.isDefault || book.name == "我的账本") {
+        QMessageBox::warning(this, "提示", "默认账本\"我的账本\"不能修改名称");
+        return;
+    }
+
+    QString oldName = book.name;
+
     EditBookDialog dialog(this);
     dialog.setBookInfo(book.name, book.remark);
 
@@ -634,6 +790,13 @@ void Manage::onEditBook()
         if (exists) {
             QMessageBox::warning(this, "修改失败", "账本名称已存在，请使用其他名称");
             return;
+        }
+
+        // 重命名数据文件
+        if (oldName != newName) {
+            QString oldDataFileName = QString("%1_data.txt").arg(oldName);
+            QString newDataFileName = QString("%1_data.txt").arg(newName);
+            QFile::rename(oldDataFileName, newDataFileName);
         }
 
         book.name = newName;
@@ -658,22 +821,42 @@ void Manage::onDeleteBook()
     }
 
     QString bookName = m_books[m_currentRightClickRow].name;
+    bool isDefault = m_books[m_currentRightClickRow].isDefault;
+
+    // 检查是否为默认账本
+    if (isDefault || bookName == "我的账本") {
+        QMessageBox::warning(this, "提示", "默认账本\"我的账本\"不能删除");
+        return;
+    }
 
     QMessageBox::StandardButton reply = QMessageBox::question(
         this,
         "确认删除",
-        QString("确定要删除账本 \"%1\" 吗？\n删除后无法恢复！\nps:这个删除部分还需要以后进行再调整").arg(bookName),
+        QString("确定要删除账本 \"%1\" 吗？\\\\n删除后无法恢复！\\\\n该账本的所有记录也会被删除！").arg(bookName),
         QMessageBox::Yes | QMessageBox::No
         );
 
     if (reply == QMessageBox::Yes) {
+        // 删除对应的数据文件
+        QString dataFileName = QString("%1_data.txt").arg(bookName);
+        QFile::remove(dataFileName);
+
         bool isDeletingSelected = (m_currentRightClickRow == m_selectedRow);
 
         m_books.removeAt(m_currentRightClickRow);
 
         if (isDeletingSelected) {
             if (m_books.size() > 0) {
-                m_selectedRow = 0;
+                // 优先选择默认账本
+                for (int i = 0; i < m_books.size(); ++i) {
+                    if (m_books[i].isDefault || m_books[i].name == "我的账本") {
+                        m_selectedRow = i;
+                        break;
+                    }
+                }
+                if (m_selectedRow == -1) {
+                    m_selectedRow = 0;
+                }
             } else {
                 m_selectedRow = -1;
             }
@@ -694,14 +877,155 @@ void Manage::onTableContextMenu(const QPoint &pos)
     if (item) {
         m_currentRightClickRow = item->row();
 
-        QMenu menu(this);
-        QAction *editAction = menu.addAction("✏️ 修改账本");
-        QAction *deleteAction = menu.addAction("🗑️ 删除账本");
-        menu.addSeparator();
+        // 检查是否为默认账本
+        bool isDefault = m_books[m_currentRightClickRow].isDefault ||
+                         m_books[m_currentRightClickRow].name == "我的账本";
 
-        connect(editAction, &QAction::triggered, this, &Manage::onEditBook);
-        connect(deleteAction, &QAction::triggered, this, &Manage::onDeleteBook);
+        QMenu menu(this);
+
+        if (!isDefault) {
+            QAction *editAction = menu.addAction("修改账本");
+            QAction *deleteAction = menu.addAction("删除账本");
+            connect(editAction, &QAction::triggered, this, &Manage::onEditBook);
+            connect(deleteAction, &QAction::triggered, this, &Manage::onDeleteBook);
+            menu.addSeparator();
+        }
+
+        QAction *joinAction = menu.addAction("加入多人账本");
+        connect(joinAction, &QAction::triggered, this, &Manage::showJoinBookDialog);
 
         menu.exec(m_table->viewport()->mapToGlobal(pos));
+    } else {
+        // 在空白区域右键
+        QMenu menu(this);
+        QAction *joinAction = menu.addAction("加入多人账本");
+        connect(joinAction, &QAction::triggered, this, &Manage::showJoinBookDialog);
+        menu.exec(m_table->viewport()->mapToGlobal(pos));
     }
+}
+// ========== 网络功能实现（只添加，不修改原有代码）==========
+
+void Manage::onConnected()
+{
+    qDebug() << "已连接到服务器";
+    NetworkClient::getInstance()->getBooks();
+}
+
+void Manage::onDisconnected()
+{
+    qDebug() << "已断开服务器连接";
+}
+
+void Manage::onError(const QString &error)
+{
+    QMessageBox::warning(this, "网络错误", error);
+}
+
+void Manage::onCreateBookResult(bool success, const QString &bookId, const QString &bookName, const QString &inviteCode, const QString &message)
+{
+    if (success) {
+        QMessageBox::information(this, "创建成功",
+                                 QString("多人账本 \"%1\" 创建成功！\\\\n邀请码：%2\\\\n请保存好邀请码以便他人加入")
+                                     .arg(bookName).arg(inviteCode));
+        NetworkClient::getInstance()->getBooks();
+    } else {
+        QMessageBox::warning(this, "创建失败", message);
+    }
+}
+
+void Manage::onJoinBookResult(bool success, const QString &bookName, const QString &message)
+{
+    if (success) {
+        QMessageBox::information(this, "加入成功", QString("成功加入账本：%1").arg(bookName));
+        NetworkClient::getInstance()->getBooks();
+    } else {
+        QMessageBox::warning(this, "加入失败", message);
+    }
+}
+
+void Manage::onGetBooksResult(const QJsonArray &books)
+{
+    // 将服务器账本添加到本地列表（保留原有本地账本）
+    for (const QJsonValue &value : books) {
+        QJsonObject obj = value.toObject();
+
+        // 检查是否已存在
+        bool exists = false;
+        for (const BookInfo &book : m_books) {
+            if (book.bookId == obj["bookId"].toString()) {
+                exists = true;
+                break;
+            }
+        }
+
+        if (!exists) {
+            BookInfo newBook;
+            newBook.name = obj["bookName"].toString();
+            newBook.bookId = obj["bookId"].toString();
+            newBook.inviteCode = obj["inviteCode"].toString();
+            newBook.createTime = obj["createTime"].toString();
+            newBook.memberCount = obj["memberCount"].toInt();
+            newBook.recordCount = 0;
+            newBook.remark = obj["remark"].toString();
+            m_books.append(newBook);
+        }
+    }
+
+    saveBooksToFile();
+    loadAccountBooks();
+}
+
+void Manage::onMemberJoined(const QString &bookId, const QString &userId, const QString &userName)
+{
+    Q_UNUSED(bookId);
+    Q_UNUSED(userId);
+    qDebug() << QString("%1 加入了账本").arg(userName);
+    NetworkClient::getInstance()->getBooks();
+}
+
+void Manage::onMemberLeft(const QString &bookId, const QString &userId, const QString &userName)
+{
+    Q_UNUSED(bookId);
+    Q_UNUSED(userId);
+    qDebug() << QString("%1 离开了账本").arg(userName);
+    NetworkClient::getInstance()->getBooks();
+}
+
+void Manage::onNewRecord(const QString &bookId, const QJsonObject &record)
+{
+    Q_UNUSED(bookId);
+    Q_UNUSED(record);
+    qDebug() << "账本有新记录";
+}
+
+void Manage::showJoinBookDialog()
+{
+    bool ok;
+    QString bookId = QInputDialog::getText(this, "加入多人账本",
+                                           "请输入账本ID：",
+                                           QLineEdit::Normal,
+                                           "", &ok);
+    if (!ok || bookId.isEmpty()) return;
+
+    QString inviteCode = QInputDialog::getText(this, "加入多人账本",
+                                               "请输入邀请码：",
+                                               QLineEdit::Normal,
+                                               "", &ok);
+    if (!ok || inviteCode.isEmpty()) return;
+
+    NetworkClient* client = NetworkClient::getInstance();
+    if (client->isConnected()) {
+        client->joinBook(bookId, inviteCode);
+    } else {
+        QMessageBox::warning(this, "错误", "未连接到服务器，请先启动服务器");
+    }
+}
+#include <QShowEvent>  // 文件顶部添加
+
+void Manage::showEvent(QShowEvent *event)
+{
+    QWidget::showEvent(event);
+    // 每次显示窗口时，重新加载选中的账本
+    loadSelectedBook();
+    loadAccountBooks();  // 刷新表格，高亮正确的账本
 }
