@@ -1,7 +1,8 @@
 #include "datachartwidget.h"
 #include <QtWidgets>
-#include <QChartView>
 #include <QtCharts>
+
+QT_CHARTS_USE_NAMESPACE
 
 datachartwidget::datachartwidget(QWidget *parent)
     : QWidget(parent)
@@ -11,29 +12,19 @@ datachartwidget::datachartwidget(QWidget *parent)
 
 void datachartwidget::setupui()
 {
-    // 1. 创建整体垂直布局
     QVBoxLayout *mainlayout = new QVBoxLayout(this);
     mainlayout->setContentsMargins(5, 5, 5, 5);
 
-    // 2. 初始化分页主控件
-    m_tabwidget = new QTabWidget(this);
-
-    // 3. 【第一页】创建表格，并用明细表 Emoji 装饰标签页
-    m_tablewidget = new QTableWidget(this);
-    m_tablewidget->setAlternatingRowColors(true);
-    m_tablewidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    m_tabwidget->addTab(m_tablewidget, "📋 数据明细");
-
-    // 4. 【第二页】创建柱状图画板，塞入第二个分页
+    // 水平分割器：左边柱状图，右边饼状图
+    QSplitter *splitter = new QSplitter(Qt::Horizontal, this);
     m_barchartview = new QChartView(this);
-    m_tabwidget->addTab(m_barchartview, "📊 收支对比图");
-
-    // 5. 【第三页】创建饼图画板，塞入第三个分页
     m_piechartview = new QChartView(this);
-    m_tabwidget->addTab(m_piechartview, "🪙 支出占比图");
-
-    // 6. 把大分页控件安放到主布局中
-    mainlayout->addWidget(m_tabwidget);
+    splitter->addWidget(m_barchartview);
+    splitter->addWidget(m_piechartview);
+    // 宽度比例 1:1
+    splitter->setStretchFactor(0, 1);
+    splitter->setStretchFactor(1, 1);
+    mainlayout->addWidget(splitter);
 }
 
 void datachartwidget::setbookname(const QString &name)
@@ -45,8 +36,7 @@ void datachartwidget::setbookname(const QString &name)
 void datachartwidget::loaddata()
 {
     parsedatafile();
-    refreshtable();
-    refreshbarchart(); // 🌟 运行时，图表会自动画到上面 setupui 准备好的分页画板里！
+    refreshbarchart();
     refreshpiechart();
 }
 
@@ -117,36 +107,6 @@ void datachartwidget::parsedatafile()
 QString datachartwidget::getdatafilepath() const
 {
     return QDir::currentPath() + "/" + m_bookname + "_data.txt";
-}
-
-void datachartwidget::refreshtable()
-{
-    QStringList headers = {"月份", "总收入 (元)", "总支出 (元)", "结余 (元)"};
-    m_tablewidget->setColumnCount(headers.size());
-    m_tablewidget->setHorizontalHeaderLabels(headers);
-
-    QList<QString> months = m_monthlydata.keys();
-    std::sort(months.begin(), months.end());
-    m_tablewidget->setRowCount(months.size());
-
-    for (int i = 0; i < months.size(); ++i) {
-        const QString &month = months[i];
-        const monthdata &data = m_monthlydata[month];
-
-        QTableWidgetItem *itemmonth = new QTableWidgetItem(month);
-        QTableWidgetItem *itemincome = new QTableWidgetItem(QString::number(data.income, 'f', 2));
-        QTableWidgetItem *itemoutcome = new QTableWidgetItem(QString::number(data.outcome, 'f', 2));
-        QTableWidgetItem *itembalance = new QTableWidgetItem(QString::number(data.balance, 'f', 2));
-
-        if (data.balance < 0) itembalance->setForeground(Qt::red);
-        else if (data.balance > 0) itembalance->setForeground(Qt::darkGreen);
-
-        m_tablewidget->setItem(i, 0, itemmonth);
-        m_tablewidget->setItem(i, 1, itemincome);
-        m_tablewidget->setItem(i, 2, itemoutcome);
-        m_tablewidget->setItem(i, 3, itembalance);
-    }
-    m_tablewidget->resizeColumnsToContents();
 }
 
 void datachartwidget::refreshbarchart()

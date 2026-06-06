@@ -17,4 +17,5 @@ private slots:
 private:
     QPushButton *m_btn;
 };
-#endif
+
+#endif // STARTDIALOG_H
