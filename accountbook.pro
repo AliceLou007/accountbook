@@ -12,6 +12,7 @@ SOURCES += \
     bookdetail.cpp \
     createbookdialog.cpp \
     editbookdialog.cpp \
+    editrecorddialog.cpp \
     logindialog.cpp \
     main.cpp \
     manage.cpp \
@@ -27,6 +28,7 @@ HEADERS += \
     bookdetail.h \
     createbookdialog.h \
     editbookdialog.h \
+    editrecorddialog.h \
     logindialog.h \
     manage.h \
     multibookdialog.h \

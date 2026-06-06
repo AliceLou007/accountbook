@@ -4,6 +4,7 @@
 #include <QTextStream>
 #include <algorithm>
 #include <QHBoxLayout>
+#include "editrecorddialog.h"
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QInputDialog>
@@ -330,21 +331,23 @@ void Record::on_editRecord_clicked(int index)
 
     auto& target = m_allRecords[index];
 
-    bool ok;
-    double newAmount = QInputDialog::getDouble(this, "修改金额",
-                                               QString("请为【%1 - %2】设置新金额：").arg(target.date).arg(target.category),
-                                               target.amount, 0.01, 999999.0, 2, &ok);
+    // 创建编辑对话框
+    EditRecordDialog dialog(target.date, target.type, target.category,
+                            target.amount, target.remark, this);
 
-    if (ok && newAmount > 0) {
-        QString newRemark = QInputDialog::getText(this, "修改备注", "修改备注",
-                                                  QLineEdit::Normal, target.remark, &ok);
-
-        target.amount = newAmount;
-        if (ok) target.remark = newRemark.isEmpty() ? "无" : newRemark.trimmed();
+    if (dialog.exec() == QDialog::Accepted) {
+        // 更新记录
+        target.date = dialog.getDate();
+        target.type = dialog.getType();
+        target.category = dialog.getCategory();
+        target.amount = dialog.getAmount();
+        target.remark = dialog.getRemark();
 
         saveDataToFile();
         emit dataChanged();
         displayRecords();
+
+        QMessageBox::information(this, "成功", "记录修改成功！");
     }
 }
 
