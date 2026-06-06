@@ -4,6 +4,7 @@
 #include "addone.h"
 #include "record.h"
 #include "budget.h"
+#include "datachartwidget.h"
 #include <QDebug>
 #include <QDate>
 #include <QFile>
@@ -40,6 +41,9 @@ Widget::Widget(QWidget *parent)
     m_recordPage = new Record(this);
     ui->stackedWidget->insertWidget(1, m_recordPage);
 
+    m_chartPage = new datachartwidget(this);          // 实例化图表页面
+    ui->stackedWidget->insertWidget(2, m_chartPage);   // 强行插入到序号 2 的位置
+
     m_budgetPage = new Budget(this);
     ui->stackedWidget->insertWidget(3, m_budgetPage);
 
@@ -48,9 +52,17 @@ Widget::Widget(QWidget *parent)
 
     connect(m_recordPage, &Record::dataChanged, this, [this](){
         updateHomeUi(currentViewingMonth); // 主页随明细页变化
+        m_chartPage->loaddata();
+        if (m_chartPage) {
+            m_chartPage->setbookname("");
+        }
     });
     connect(m_recordPage, &Record::bookChanged, this, [this](){
         updateHomeUi(currentViewingMonth); //主页随明细页刷新
+        m_chartPage->loaddata();
+        if (m_chartPage) {
+            m_chartPage->setbookname("");
+        }
     });
 
     currentViewingMonth = QDate::currentDate().toString("yyyy-MM");
@@ -286,6 +298,12 @@ void Widget::on_btnHistory_clicked() {
 void Widget::on_btnCount_clicked() {
     ui->stackedWidget->setCurrentIndex(2);
     updateSidebarStyle(ui->btnCount);
+    if (m_chartPage) {
+        m_chartPage->loaddata();
+    }
+    if (m_chartPage) {
+        m_chartPage->setbookname("");
+    }
 }
 void Widget::on_btnBudget_clicked() {
     ui->stackedWidget->setCurrentIndex(3);

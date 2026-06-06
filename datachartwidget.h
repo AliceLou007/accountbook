@@ -4,16 +4,12 @@
 #include <QWidget>
 #include <QMap>
 
-QT_BEGIN_NAMESPACE
+// 🌟 Qt 6 纯净原生前向声明：完全不需要任何 namespace 包裹！
 class QTableWidget;
 class QTabWidget;
-QT_END_NAMESPACE
+class QChartView; // 像普通控件一样直接声明
 
-QT_CHARTS_BEGIN_NAMESPACE
-    class QChartView;
-QT_CHARTS_END_NAMESPACE
-
-    struct monthdata {
+struct monthdata {
     double income = 0.0;
     double outcome = 0.0;
     double balance = 0.0;
@@ -40,8 +36,9 @@ protected:
 
 private:
     QTableWidget *m_tablewidget;
-    QChartView   *m_barchartview;
+    QChartView   *m_barchartview; // 🌟 恢复最清爽的声明
     QChartView   *m_piechartview;
+    QTabWidget   *m_tabwidget;
 
     QMap<QString, monthdata> m_monthlydata;
     QMap<QString, double>    m_categoryexpense;

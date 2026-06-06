@@ -6,6 +6,7 @@
 #include <QLabel>
 #include <QMenu>
 #include <QAction>
+#include "datachartwidget.h"
 #include "record.h"
 #include "manage.h"
 #include "budget.h"
@@ -61,6 +62,7 @@ private:
     Record *m_recordPage;
     Manage *m_managePage;
     Budget *m_budgetPage;
+    datachartwidget *m_chartPage;
     QString currentViewingMonth;
     QMap<QString, MonthStat> allMonthsData;
     QString m_bookName;

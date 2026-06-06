@@ -1,5 +1,6 @@
 QT += widgets
 QT += core gui network
+QT += charts
 CONFIG += c++17
 
 # You can make your code fail to compile if it uses deprecated APIs.
@@ -12,6 +13,7 @@ SOURCES += \
     bookdetail.cpp \
     budget.cpp \
     createbookdialog.cpp \
+    datachartwidget.cpp \
     editbookdialog.cpp \
     editrecorddialog.cpp \
     logindialog.cpp \
@@ -20,6 +22,7 @@ SOURCES += \
     multibookdialog.cpp \
     networkclient.cpp \
     record.cpp \
+    startdialog.cpp \
     tagmanagerdialog.cpp \
     widget.cpp
 
@@ -29,6 +32,7 @@ HEADERS += \
     bookdetail.h \
     budget.h \
     createbookdialog.h \
+    datachartwidget.h \
     editbookdialog.h \
     editrecorddialog.h \
     logindialog.h \
@@ -36,6 +40,7 @@ HEADERS += \
     multibookdialog.h \
     networkclient.h \
     record.h \
+    startdialog.h \
     tagmanagerdialog.h \
     widget.h
 

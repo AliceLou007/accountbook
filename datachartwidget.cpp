@@ -1,8 +1,7 @@
 #include "datachartwidget.h"
 #include <QtWidgets>
+#include <QChartView>
 #include <QtCharts>
-
-QT_CHARTS_USE_NAMESPACE
 
 datachartwidget::datachartwidget(QWidget *parent)
     : QWidget(parent)
@@ -12,19 +11,29 @@ datachartwidget::datachartwidget(QWidget *parent)
 
 void datachartwidget::setupui()
 {
+    // 1. 创建整体垂直布局
     QVBoxLayout *mainlayout = new QVBoxLayout(this);
+    mainlayout->setContentsMargins(5, 5, 5, 5);
 
+    // 2. 初始化分页主控件
+    m_tabwidget = new QTabWidget(this);
+
+    // 3. 【第一页】创建表格，并用明细表 Emoji 装饰标签页
     m_tablewidget = new QTableWidget(this);
     m_tablewidget->setAlternatingRowColors(true);
     m_tablewidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    mainlayout->addWidget(m_tablewidget, 1);
+    m_tabwidget->addTab(m_tablewidget, "📋 数据明细");
 
-    QSplitter *splitter = new QSplitter(Qt::Horizontal, this);
+    // 4. 【第二页】创建柱状图画板，塞入第二个分页
     m_barchartview = new QChartView(this);
+    m_tabwidget->addTab(m_barchartview, "📊 收支对比图");
+
+    // 5. 【第三页】创建饼图画板，塞入第三个分页
     m_piechartview = new QChartView(this);
-    splitter->addWidget(m_barchartview);
-    splitter->addWidget(m_piechartview);
-    mainlayout->addWidget(splitter, 2);
+    m_tabwidget->addTab(m_piechartview, "🪙 支出占比图");
+
+    // 6. 把大分页控件安放到主布局中
+    mainlayout->addWidget(m_tabwidget);
 }
 
 void datachartwidget::setbookname(const QString &name)
@@ -37,7 +46,7 @@ void datachartwidget::loaddata()
 {
     parsedatafile();
     refreshtable();
-    refreshbarchart();
+    refreshbarchart(); // 🌟 运行时，图表会自动画到上面 setupui 准备好的分页画板里！
     refreshpiechart();
 }
 
