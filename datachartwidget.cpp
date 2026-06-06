@@ -15,13 +15,11 @@ void datachartwidget::setupui()
     QVBoxLayout *mainlayout = new QVBoxLayout(this);
     mainlayout->setContentsMargins(5, 5, 5, 5);
 
-    // 水平分割器：左边柱状图，右边饼状图
     QSplitter *splitter = new QSplitter(Qt::Horizontal, this);
     m_barchartview = new QChartView(this);
     m_piechartview = new QChartView(this);
     splitter->addWidget(m_barchartview);
     splitter->addWidget(m_piechartview);
-    // 宽度比例 1:1
     splitter->setStretchFactor(0, 1);
     splitter->setStretchFactor(1, 1);
     mainlayout->addWidget(splitter);
