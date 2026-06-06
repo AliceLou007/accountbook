@@ -8,6 +8,7 @@
 #include <QAction>
 #include "record.h"
 #include "manage.h"
+#include "budget.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -59,6 +60,7 @@ private:
     Ui::Widget *ui;
     Record *m_recordPage;
     Manage *m_managePage;
+    Budget *m_budgetPage;
     QString currentViewingMonth;
     QMap<QString, MonthStat> allMonthsData;
     QString m_bookName;

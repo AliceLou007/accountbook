@@ -3,6 +3,7 @@
 #include "manage.h"
 #include "addone.h"
 #include "record.h"
+#include "budget.h"
 #include <QDebug>
 #include <QDate>
 #include <QFile>
@@ -38,6 +39,9 @@ Widget::Widget(QWidget *parent)
 
     m_recordPage = new Record(this);
     ui->stackedWidget->insertWidget(1, m_recordPage);
+
+    m_budgetPage = new Budget(this);
+    ui->stackedWidget->insertWidget(3, m_budgetPage);
 
     m_managePage = new Manage(this);
     ui->stackedWidget->insertWidget(4, m_managePage);

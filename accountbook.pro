@@ -10,6 +10,7 @@ SOURCES += \
     accountingserver.cpp \
     addone.cpp \
     bookdetail.cpp \
+    budget.cpp \
     createbookdialog.cpp \
     editbookdialog.cpp \
     editrecorddialog.cpp \
@@ -26,6 +27,7 @@ HEADERS += \
     accountingserver.h \
     addone.h \
     bookdetail.h \
+    budget.h \
     createbookdialog.h \
     editbookdialog.h \
     editrecorddialog.h \
@@ -39,6 +41,7 @@ HEADERS += \
 
 FORMS += widget.ui \
     addone.ui \
+    budget.ui \
     record.ui
 
 TRANSLATIONS += \

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>buget</class>
- <widget class="QWidget" name="buget">
+ <class>Budget</class>
+ <widget class="QWidget" name="Budget">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -13,14 +13,26 @@
   <property name="windowTitle">
    <string>Form</string>
   </property>
+  <property name="styleSheet">
+   <string notr="true">Budget {
+    background-color: #FFFFFF;
+}</string>
+  </property>
   <widget class="QFrame" name="frame">
    <property name="geometry">
     <rect>
-     <x>0</x>
-     <y>70</y>
+     <x>10</x>
+     <y>130</y>
      <width>681</width>
      <height>261</height>
     </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">#frame {
+    background-color: #FFFFFF; /* 纯白背景 */
+    border: 1px solid #F0F0F0; /* 极淡的灰色边框 */
+    border-radius: 16px;
+}</string>
    </property>
    <property name="frameShape">
     <enum>QFrame::Shape::StyledPanel</enum>
@@ -83,6 +95,27 @@
       <height>51</height>
      </rect>
     </property>
+    <property name="styleSheet">
+     <string notr="true">#btnSave {
+    background-color: #8c1515; /* 经典的北大红背景 */
+    color: white;              /* 白色文字 */
+    border-radius: 12px;       /* 圆角效果，数值越大越圆润 */
+    font-size: 16px;           /* 字体放大 */
+    font-weight: bold;         /* 字体加粗 */
+}
+
+/* 鼠标悬停在按钮上时，颜色稍微变深一点，增加交互感 */
+#btnSave:hover {
+    background-color: #a01a1a;
+}
+
+/* 鼠标点下去的一瞬间，按钮往下沉一下 */
+#btnSave:pressed {
+    background-color: #701010;
+    padding-top: 2px;
+    padding-left: 2px;
+}</string>
+    </property>
     <property name="text">
      <string>保存预算</string>
     </property>
@@ -105,10 +138,17 @@
    <property name="geometry">
     <rect>
      <x>10</x>
-     <y>350</y>
+     <y>400</y>
      <width>681</width>
      <height>311</height>
     </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">#frame_2 {
+    background-color: #FFFFFF; /* 纯白背景 */
+    border: 1px solid #F0F0F0; /* 极淡的灰色边框 */
+    border-radius: 16px;
+}</string>
    </property>
    <property name="frameShape">
     <enum>QFrame::Shape::StyledPanel</enum>
@@ -119,8 +159,8 @@
    <widget class="QLabel" name="label_4">
     <property name="geometry">
      <rect>
-      <x>50</x>
-      <y>20</y>
+      <x>40</x>
+      <y>30</y>
       <width>69</width>
       <height>19</height>
      </rect>
@@ -137,6 +177,12 @@
       <width>171</width>
       <height>151</height>
      </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">#frame_3{ 
+border: 1px solid  #8c1515;
+ border-radius: 10px; 
+}</string>
     </property>
     <property name="frameShape">
      <enum>QFrame::Shape::StyledPanel</enum>
@@ -180,6 +226,9 @@
       <height>151</height>
      </rect>
     </property>
+    <property name="styleSheet">
+     <string notr="true">#frame_4{ border: 1px solid  #8c1515; border-radius: 10px; }</string>
+    </property>
     <property name="frameShape">
      <enum>QFrame::Shape::StyledPanel</enum>
     </property>
@@ -222,6 +271,9 @@
       <height>151</height>
      </rect>
     </property>
+    <property name="styleSheet">
+     <string notr="true">#frame_5{ border: 1px solid  #8c1515; border-radius: 10px; }</string>
+    </property>
     <property name="frameShape">
      <enum>QFrame::Shape::StyledPanel</enum>
     </property>
@@ -255,6 +307,32 @@
      </property>
     </widget>
    </widget>
+   <widget class="QProgressBar" name="progressBar">
+    <property name="geometry">
+     <rect>
+      <x>40</x>
+      <y>260</y>
+      <width>611</width>
+      <height>23</height>
+     </rect>
+    </property>
+    <property name="value">
+     <number>24</number>
+    </property>
+   </widget>
+  </widget>
+  <widget class="QLabel" name="labelHint">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>29</y>
+     <width>681</width>
+     <height>81</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>TextLabel</string>
+   </property>
   </widget>
  </widget>
  <resources/>
