@@ -2,22 +2,12 @@
 #define ADDONE_H
 
 #include <QDialog>
-#include <string>
 #include <QStringList>
+#include <QLabel>
 
 namespace Ui {
 class AddOne;
 }
-
-// 账目结构体，用于规范存储数据
-struct AccountRecord {
-    std::string bookName;
-    std::string date;
-    std::string type;
-    std::string category;
-    double amount;
-    std::string comment;
-};
 
 class AddOne : public QDialog
 {
@@ -25,26 +15,28 @@ class AddOne : public QDialog
 
 public:
     explicit AddOne(QWidget *parent = nullptr);
-    void setCurrentBookName(const QString &bookName);
     ~AddOne();
 
 private slots:
     void on_buttonBox_accepted();
     void on_buttonBox_rejected();
-    void onTypeChanged(const QString &type);  // 添加：类型改变时的处理
+    void onTypeChanged(const QString &type);
+    void onSelectImage();  // 选择图片
 
 private:
-    QStringList getTopThreeRemarks();
     void loadBookNames();
     void loadSelectedBook();
     void updateBookRecordCount(const QString &bookName);
-    void loadCategoriesFromTags();  // 添加：从 tags.json 加载分类标签
+    void loadCategoriesFromTags();
+    QStringList getTopThreeRemarks();
+    QString copyImageToBook(const QString &imagePath, const QString &bookName);
 
 private:
     Ui::AddOne *ui;
-    QString m_currentBookName;
-    QStringList m_expenseTags;  // 添加：支出标签列表
-    QStringList m_incomeTags;   // 添加：收入标签列表
+    QStringList m_expenseTags;
+    QStringList m_incomeTags;
+    QString m_currentImagePath;  // 当前选择的图片路径
+    QLabel *m_imageLabel;        // 显示图片状态
 };
 
 #endif // ADDONE_H
