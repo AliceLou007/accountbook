@@ -45,6 +45,9 @@ Widget::Widget(QWidget *parent)
     connect(m_recordPage, &Record::dataChanged, this, [this](){
         updateHomeUi(currentViewingMonth); // 主页随明细页变化
     });
+    connect(m_recordPage, &Record::bookChanged, this, [this](){
+        updateHomeUi(currentViewingMonth); //主页随明细页刷新
+    });
 
     currentViewingMonth = QDate::currentDate().toString("yyyy-MM");
     updateHomeUi(currentViewingMonth);

@@ -34,6 +34,7 @@ public:
 
 signals:
     void dataChanged();                // 数据改变信号
+    void bookChanged();
 
 protected:
     void showEvent(QShowEvent *event) override;  // 窗口显示时自动调用

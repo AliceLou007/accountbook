@@ -458,6 +458,7 @@ void Record::on_currentBookBtn_clicked()
         displayRecords();
         updateCategoryMenu();     // 更新分类菜单
     }
+    emit bookChanged();
 }
 
 void Record::updateCurrentBookDisplay()

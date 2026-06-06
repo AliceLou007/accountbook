@@ -92,7 +92,7 @@ void Manage::setupUI()
 
     // 三个按钮
     m_btnCreate = new QPushButton("📒 创建新账本", m_managePage);
-    m_btnInvite = new QPushButton("?? 在线多人账本", m_managePage);
+    m_btnInvite = new QPushButton("🧑🏻‍🤝‍🧑🏻 在线多人账本", m_managePage);
     m_btnTags = new QPushButton("🏷️ 标签分类设置", m_managePage);
 
     QString btnStyle =
