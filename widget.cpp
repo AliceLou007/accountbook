@@ -259,7 +259,7 @@ void Widget::updateHomeUi(const QString &yearMonth)
         ui->lblIncomeAmount->setText("￥ 0.00");
         ui->lblOutcomeAmount->setText("￥ 0.00");
         ui->lblBalanceAmount->setText("￥ 0.00");
-        ui->lblCount->setText("本月记账: 0 笔");
+        ui->lblCount->setText("0 笔");
         return;
     }
 

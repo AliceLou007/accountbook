@@ -16,7 +16,10 @@ AddOne::AddOne(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    // 用 C++ 代码直接给整个弹窗设置 QSS 样式
+    // ========== 设置日期默认为今天 ==========
+    ui->dateEdit->setDate(QDate::currentDate());
+
+    // 设置样式
     this->setStyleSheet(
         "QDialog {"
         "   background-color: #ffffff;"
@@ -43,7 +46,7 @@ AddOne::AddOne(QWidget *parent) :
     ui->comboType->addItem("支出");
     ui->comboType->addItem("收入");
 
-    // 初始化分类下拉框（从 tags.json 加载）
+    // 从 tags.json 加载分类标签
     loadCategoriesFromTags();
 
     ui->lineEditComment->setEditable(true);
@@ -51,6 +54,7 @@ AddOne::AddOne(QWidget *parent) :
     ui->lineEditComment->addItems(getTopThreeRemarks());
     ui->lineEditComment->setCurrentText("");
 
+    // 连接类型改变信号
     connect(ui->comboType, &QComboBox::currentTextChanged, this, &AddOne::onTypeChanged);
 }
 

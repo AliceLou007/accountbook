@@ -58,7 +58,7 @@ Record::Record(QWidget *parent) : QWidget(parent), ui(new Ui::Record), m_current
         );
     m_currentBookBtn->setCursor(Qt::PointingHandCursor);
 
-    QLabel *clickHint = new QLabel("点击切换", topWidget);
+    QLabel *clickHint = new QLabel( topWidget);
     clickHint->setFixedWidth(70);
     clickHint->setStyleSheet("color: rgba(255,255,255,0.7); font-size: 15px; background-color: transparent;");
     clickHint->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
