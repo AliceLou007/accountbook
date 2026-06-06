@@ -20,8 +20,8 @@ startdialog::startdialog(QWidget *parent)
 void startdialog::on_showchart_clicked()
 {
     QDialog *chartdialog = new QDialog(this);
-    chartdialog->setWindowTitle("账本统计分析");
-    chartdialog->resize(900, 650);
+    chartdialog->setWindowTitle("收支统计");
+    chartdialog->resize(800, 900);   // 宽800，高900，适合上下两个饼图
 
     datachartwidget *chartwidget = new datachartwidget(chartdialog);
     chartwidget->loaddata();
