@@ -153,6 +153,19 @@
     <string>选择账本</string>
    </property>
   </widget>
+  <widget class="QPushButton" name="picture">
+   <property name="geometry">
+    <rect>
+     <x>220</x>
+     <y>70</y>
+     <width>111</width>
+     <height>31</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>上传图片</string>
+   </property>
+  </widget>
   <zorder>dateEdit</zorder>
   <zorder>lineEditAmount</zorder>
   <zorder>buttonBox</zorder>
@@ -164,6 +177,7 @@
   <zorder>lineEditComment</zorder>
   <zorder>comboBook</zorder>
   <zorder>label_4</zorder>
+  <zorder>picture</zorder>
  </widget>
  <resources/>
  <connections/>

@@ -7,14 +7,14 @@
 #include <QStringList>
 #include <QShowEvent>
 
-// 记账条目结构体
 struct AccountItem {
-    QString book;       // 账本
-    QString date;       // 日期
-    QString type;       // 类型：收入/支出
-    QString category;   // 分类：餐饮、购物等
-    double amount;      // 金额
-    QString remark;     // 备注
+    QString book;
+    QString date;
+    QString type;
+    QString category;
+    double amount;
+    QString remark;
+    QString imagePath;  // 添加图片路径字段
 };
 
 namespace Ui {
@@ -24,47 +24,49 @@ class Record;
 class Record : public QWidget
 {
     Q_OBJECT
-
+private:
+    QString copyImageToBookForRecord(const QString &imagePath, const QString &bookName);
 public:
     explicit Record(QWidget *parent = nullptr);
     ~Record();
 
-    void loadDataFromFile();           // 从文件加载数据（public，供外部调用）
-    void updateCurrentBookDisplay();   // 更新当前账本显示
+    void loadDataFromFile();
+    void updateCurrentBookDisplay();
 
 signals:
-    void dataChanged();                // 数据改变信号
+    void dataChanged();
     void bookChanged();
 
 protected:
-    void showEvent(QShowEvent *event) override;  // 窗口显示时自动调用
+    void showEvent(QShowEvent *event) override;
 
 private slots:
-    void on_currentBookBtn_clicked();  // 点击当前账本切换
-    void on_sortTime_clicked();        // 按时间排序
-    void on_editRecord_clicked(int index);   // 登记修改功能
-    void on_deleteRecord_clicked(int index); // 登记删除功能
+    void on_currentBookBtn_clicked();
+    void on_sortTime_clicked();
+    void on_editRecord_clicked(int index);
+    void on_deleteRecord_clicked(int index);
+    void on_viewImage_clicked(int index);  // 添加查看图片的槽函数
 
 private:
-    void loadBookNames();              // 加载账本名称列表
-    void loadSelectedBook();           // 加载选中的账本
-    void saveSelectedBook();           // 保存选中的账本
-    void saveDataToFile();             // 登记物理文件同步保存功能
-    void displayRecords();             // 显示记录
-    void filterAndDisplayRecords(const QString &selectedCategory); // 按分类筛选显示
-    void updateTopbarStyle(QPushButton* activeBtn);  // 更新顶部按钮样式
-    void loadTagsFromFile();           // 加载标签配置
-    void checkAndFixCategories();      // 检查并修复已删除的标签
-    void updateCategoryMenu();         // 更新分类菜单
+    void loadBookNames();
+    void loadSelectedBook();
+    void saveSelectedBook();
+    void saveDataToFile();
+    void displayRecords();
+    void filterAndDisplayRecords(const QString &selectedCategory);
+    void updateTopbarStyle(QPushButton* activeBtn);
+    void loadTagsFromFile();
+    void checkAndFixCategories();
+    void updateCategoryMenu();
 
     Ui::Record *ui;
-    QList<AccountItem> m_allRecords;   // 所有记录
-    QStringList m_bookNames;           // 账本名称列表
-    QString m_currentBookName;         // 当前账本名称
-    int m_selectedRow;                 // 选中的账本索引
-    int m_currentSortType;             // 0:按时间 1:按分类
+    QList<AccountItem> m_allRecords;
+    QStringList m_bookNames;
+    QString m_currentBookName;
+    int m_selectedRow;
+    int m_currentSortType;
 
-    QPushButton *m_currentBookBtn;     // 当前账本按钮
+    QPushButton *m_currentBookBtn;
 };
 
 #endif // RECORD_H

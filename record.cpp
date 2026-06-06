@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <QHBoxLayout>
 #include "editrecorddialog.h"
+#include <QDateTime>
+#include <QFileInfo>
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QInputDialog>
@@ -16,12 +18,12 @@
 #include <QShowEvent>
 #include <QMenu>
 #include <QDebug>
+#include <QPixmap>
+#include <QDialog>
+#include <QPushButton>
 
 Record::Record(QWidget *parent) : QWidget(parent), ui(new Ui::Record), m_currentSortType(0), m_selectedRow(-1) {
     ui->setupUi(this);
-
-    // 禁用自动连接（避免冲突）
-    // 不要在这里添加 on_sortCategory_clicked 之类的槽函数
 
     // ========== 添加红底白字抬头 ==========
     QWidget *topWidget = new QWidget(this);
@@ -34,7 +36,7 @@ Record::Record(QWidget *parent) : QWidget(parent), ui(new Ui::Record), m_current
     topWidget->setFixedHeight(70);
 
     QHBoxLayout *topLayout = new QHBoxLayout(topWidget);
-    topLayout->setContentsMargins(150, 10, 50, 0);
+    topLayout->setContentsMargins(150, 10, 150, 0);
     topLayout->setSpacing(50);
 
     QLabel *currentBookTitle = new QLabel("当前账本：", topWidget);
@@ -81,23 +83,16 @@ Record::Record(QWidget *parent) : QWidget(parent), ui(new Ui::Record), m_current
 
     updateTopbarStyle(ui->sortTime);
 
-    // 手动连接信号（避免自动连接冲突）
     connect(m_currentBookBtn, &QPushButton::clicked, this, &Record::on_currentBookBtn_clicked);
     connect(ui->sortTime, &QPushButton::clicked, this, &Record::on_sortTime_clicked);
 
-    // 关键：手动连接分类按钮的点击事件来弹出菜单
     connect(ui->sortCategory, &QPushButton::clicked, this, [this]() {
-        qDebug() << "分类按钮被点击";
         if (ui->sortCategory->menu()) {
             QPoint pos = ui->sortCategory->mapToGlobal(QPoint(0, ui->sortCategory->height()));
-            qDebug() << "弹出菜单位置:" << pos;
             ui->sortCategory->menu()->exec(pos);
-        } else {
-            qDebug() << "菜单为空！";
         }
     });
 
-    // 创建分类菜单
     updateCategoryMenu();
 }
 
@@ -203,16 +198,15 @@ void Record::loadDataFromFile() {
         if (line.trimmed().isEmpty()) continue;
 
         QStringList parts = line.split(",");
-        if (parts.size() >= 6) {
-            AccountItem item;
-            item.book = parts[0].trimmed();
-            item.date = parts[1].trimmed();
-            item.type = parts[2].trimmed();
-            item.category = parts[3].trimmed();
-            item.amount = parts[4].toDouble();
-            item.remark = parts[5].trimmed();
-            m_allRecords.append(item);
-        }
+        AccountItem item;
+        item.book = parts.size() > 0 ? parts[0].trimmed() : "";
+        item.date = parts.size() > 1 ? parts[1].trimmed() : "";
+        item.type = parts.size() > 2 ? parts[2].trimmed() : "";
+        item.category = parts.size() > 3 ? parts[3].trimmed() : "";
+        item.amount = parts.size() > 4 ? parts[4].toDouble() : 0;
+        item.remark = parts.size() > 5 ? parts[5].trimmed() : "";
+        item.imagePath = parts.size() > 6 ? parts[6].trimmed() : "";
+        m_allRecords.append(item);
     }
     file.close();
 }
@@ -238,7 +232,8 @@ void Record::saveDataToFile() {
             << item.type << ","
             << item.category << ","
             << item.amount << ","
-            << item.remark << "\n";
+            << item.remark << ","
+            << item.imagePath << "\n";
     }
     file.close();
 }
@@ -278,7 +273,18 @@ void Record::displayRecords() {
 
         rowLayout->addWidget(textLabel);
         rowLayout->addStretch();
-
+        // 如果有图片，添加查看图片按钮
+        if (!item.imagePath.isEmpty() && QFile::exists(item.imagePath)) {
+            QPushButton *viewImageBtn = new QPushButton("查看图片", rowWidget);
+            viewImageBtn->setFixedSize(75, 26);
+            viewImageBtn->setCursor(Qt::PointingHandCursor);
+            viewImageBtn->setStyleSheet(
+                "QPushButton { background-color: #fcfcfc; border: 1px solid #dcdfe6; border-radius: 4px; color: #409eff; font-size: 12px; }"
+                "QPushButton:hover { background-color: #ecf5ff; color: #409eff; border-color: #c6e2ff; }"
+                );
+            rowLayout->addWidget(viewImageBtn);
+            connect(viewImageBtn, &QPushButton::clicked, this, [this, i]() { on_viewImage_clicked(i); });
+        }
         QPushButton *editBtn = new QPushButton("修改", rowWidget);
         editBtn->setFixedSize(55, 26);
         editBtn->setCursor(Qt::PointingHandCursor);
@@ -298,6 +304,8 @@ void Record::displayRecords() {
         rowLayout->addWidget(editBtn);
         rowLayout->setSpacing(8);
         rowLayout->addWidget(delBtn);
+
+
 
         connect(editBtn, &QPushButton::clicked, this, [this, i]() { on_editRecord_clicked(i); });
         connect(delBtn, &QPushButton::clicked, this, [this, i]() { on_deleteRecord_clicked(i); });
@@ -331,9 +339,9 @@ void Record::on_editRecord_clicked(int index)
 
     auto& target = m_allRecords[index];
 
-    // 创建编辑对话框
+    // 创建编辑对话框，传入原有的图片路径
     EditRecordDialog dialog(target.date, target.type, target.category,
-                            target.amount, target.remark, this);
+                            target.amount, target.remark, target.imagePath, this);
 
     if (dialog.exec() == QDialog::Accepted) {
         // 更新记录
@@ -342,6 +350,20 @@ void Record::on_editRecord_clicked(int index)
         target.category = dialog.getCategory();
         target.amount = dialog.getAmount();
         target.remark = dialog.getRemark();
+
+        // 处理图片：如果用户选择了新图片，则复制并更新路径
+        if (dialog.isImageChanged()) {
+            QString newImagePath = dialog.getImagePath();
+            if (!newImagePath.isEmpty()) {
+                // 复制新图片到账本目录
+                QString savedImagePath = copyImageToBookForRecord(newImagePath, m_currentBookName);
+                if (!savedImagePath.isEmpty()) {
+                    target.imagePath = savedImagePath;
+                }
+            } else if (target.imagePath.isEmpty()) {
+                target.imagePath = "";
+            }
+        }
 
         saveDataToFile();
         emit dataChanged();
@@ -416,6 +438,19 @@ void Record::filterAndDisplayRecords(const QString &selectedCategory)
         rowLayout->setSpacing(8);
         rowLayout->addWidget(delBtn);
 
+        // 添加查看图片按钮
+        if (!item.imagePath.isEmpty() && QFile::exists(item.imagePath)) {
+            QPushButton *viewImageBtn = new QPushButton("查看图片", rowWidget);
+            viewImageBtn->setFixedSize(75, 26);
+            viewImageBtn->setCursor(Qt::PointingHandCursor);
+            viewImageBtn->setStyleSheet(
+                "QPushButton { background-color: #fcfcfc; border: 1px solid #dcdfe6; border-radius: 4px; color: #409eff; font-size: 12px; }"
+                "QPushButton:hover { background-color: #ecf5ff; color: #409eff; border-color: #c6e2ff; }"
+                );
+            rowLayout->addWidget(viewImageBtn);
+            connect(viewImageBtn, &QPushButton::clicked, this, [this, i]() { on_viewImage_clicked(i); });
+        }
+
         connect(editBtn, &QPushButton::clicked, this, [this, i]() { on_editRecord_clicked(i); });
         connect(delBtn, &QPushButton::clicked, this, [this, i]() { on_deleteRecord_clicked(i); });
 
@@ -457,9 +492,9 @@ void Record::on_currentBookBtn_clicked()
         if (m_currentBookBtn) m_currentBookBtn->setText(m_currentBookName);
 
         loadDataFromFile();
-        checkAndFixCategories();  // 检查并修复无效标签
+        checkAndFixCategories();
         displayRecords();
-        updateCategoryMenu();     // 更新分类菜单
+        updateCategoryMenu();
     }
     emit bookChanged();
 }
@@ -476,17 +511,13 @@ void Record::showEvent(QShowEvent *event)
     QWidget::showEvent(event);
     loadSelectedBook();
     loadDataFromFile();
-    checkAndFixCategories();  // 检查并修复无效标签
-    updateCategoryMenu();     // 更新分类菜单
+    checkAndFixCategories();
+    updateCategoryMenu();
     displayRecords();
 }
 
-// ========== 标签管理相关函数 ==========
-
 void Record::updateCategoryMenu()
 {
-    qDebug() << "=== updateCategoryMenu 被调用 ===";
-
     QStringList incomeCategories;
     QStringList expenseCategories;
 
@@ -520,7 +551,6 @@ void Record::updateCategoryMenu()
         file.close();
     }
 
-    // 使用默认标签
     if (incomeCategories.isEmpty()) {
         incomeCategories = {"工资", "生活费", "奖学金", "兼职", "理财", "其他"};
     }
@@ -528,15 +558,10 @@ void Record::updateCategoryMenu()
         expenseCategories = {"餐饮", "购物", "日用", "交通", "娱乐", "医疗", "其他"};
     }
 
-    qDebug() << "收入标签:" << incomeCategories;
-    qDebug() << "支出标签:" << expenseCategories;
-
-    // 删除旧的菜单
     if (ui->sortCategory->menu()) {
         delete ui->sortCategory->menu();
     }
 
-    // 创建菜单
     QMenu *mainMenu = new QMenu(this);
     mainMenu->setStyleSheet(
         "QMenu {"
@@ -554,50 +579,40 @@ void Record::updateCategoryMenu()
         "}"
         );
 
-    // 添加收入标签
     QAction *incomeTitle = mainMenu->addAction("━━━ 收入 ━━━");
     incomeTitle->setEnabled(false);
 
     for (const QString &category : incomeCategories) {
         QAction *act = mainMenu->addAction(category);
         connect(act, &QAction::triggered, this, [this, category]() {
-            qDebug() << "选择了收入分类:" << category;
             filterAndDisplayRecords(category);
         });
     }
 
     mainMenu->addSeparator();
 
-    // 添加支出标签
     QAction *expenseTitle = mainMenu->addAction("━━━ 支出 ━━━");
     expenseTitle->setEnabled(false);
 
     for (const QString &category : expenseCategories) {
         QAction *act = mainMenu->addAction(category);
         connect(act, &QAction::triggered, this, [this, category]() {
-            qDebug() << "选择了支出分类:" << category;
             filterAndDisplayRecords(category);
         });
     }
 
     mainMenu->addSeparator();
 
-    // 显示全部
     QAction *showAllAct = mainMenu->addAction("显示全部");
     connect(showAllAct, &QAction::triggered, this, [this]() {
-        qDebug() << "选择了显示全部";
         on_sortTime_clicked();
     });
 
-    // 设置菜单
     ui->sortCategory->setMenu(mainMenu);
-    qDebug() << "菜单已设置，标签数量:" << (incomeCategories.size() + expenseCategories.size());
 }
 
 void Record::checkAndFixCategories()
 {
-    qDebug() << "=== checkAndFixCategories 被调用 ===";
-
     QStringList validIncomeTags;
     QStringList validExpenseTags;
 
@@ -631,7 +646,6 @@ void Record::checkAndFixCategories()
         file.close();
     }
 
-    // 使用默认标签
     if (validIncomeTags.isEmpty()) {
         validIncomeTags = {"工资", "生活费", "奖学金", "兼职", "理财", "其他"};
     }
@@ -642,14 +656,10 @@ void Record::checkAndFixCategories()
     QStringList validTags = validIncomeTags + validExpenseTags;
     validTags.removeDuplicates();
 
-    qDebug() << "有效标签列表:" << validTags;
-
     bool needSave = false;
 
-    // 将无效标签改为"其他"
     for (AccountItem &item : m_allRecords) {
         if (!validTags.contains(item.category)) {
-            qDebug() << "发现无效标签:" << item.category << "，已改为\"其他\"";
             item.category = "其他";
             needSave = true;
         }
@@ -658,13 +668,121 @@ void Record::checkAndFixCategories()
     if (needSave) {
         saveDataToFile();
         QMessageBox::information(this, "提示", "检测到已删除的标签，相关记录已自动改为\"其他\"。");
-    } else {
-        qDebug() << "所有标签都有效，无需修改";
     }
 }
 
 void Record::loadTagsFromFile()
 {
-    // 此函数保留供外部调用
     updateCategoryMenu();
+}
+
+// ========== 查看图片功能 ==========
+void Record::on_viewImage_clicked(int index)
+{
+    if (index < 0 || index >= m_allRecords.size()) return;
+
+    const auto& item = m_allRecords[index];
+    QString imagePath = item.imagePath;
+
+    if (imagePath.isEmpty()) {
+        QMessageBox::warning(this, "提示", "该记录没有关联图片！");
+        return;
+    }
+
+    if (!QFile::exists(imagePath)) {
+        QMessageBox::warning(this, "提示", QString("图片文件不存在：\n%1").arg(imagePath));
+        return;
+    }
+
+    // 创建图片查看对话框
+    QDialog *imageDialog = new QDialog(this);
+    imageDialog->setWindowTitle(QString("图片 - %1 %2 %3元")
+                                    .arg(item.date)
+                                    .arg(item.category)
+                                    .arg(item.amount, 0, 'f', 2));
+    imageDialog->setModal(true);
+    imageDialog->setMinimumSize(600, 500);
+    imageDialog->setStyleSheet("background-color: #ffffff;");
+
+    QVBoxLayout *layout = new QVBoxLayout(imageDialog);
+
+    // 加载图片
+    QPixmap pixmap(imagePath);
+    if (pixmap.isNull()) {
+        QMessageBox::warning(imageDialog, "错误", "无法加载图片！");
+        delete imageDialog;
+        return;
+    }
+
+    // 缩放图片
+    QLabel *imageLabel = new QLabel(imageDialog);
+    QPixmap scaledPixmap = pixmap.scaled(550, 400, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    imageLabel->setPixmap(scaledPixmap);
+    imageLabel->setAlignment(Qt::AlignCenter);
+    imageLabel->setStyleSheet("background-color: #f5f5f5; border: 1px solid #ddd; padding: 10px;");
+
+    // 信息标签
+    QLabel *infoLabel = new QLabel(QString("日期: %1 | 类型: %2 | 分类: %3 | 金额: %4元 | 备注: %5")
+                                       .arg(item.date)
+                                       .arg(item.type)
+                                       .arg(item.category)
+                                       .arg(item.amount, 0, 'f', 2)
+                                       .arg(item.remark), imageDialog);
+    infoLabel->setStyleSheet("color: #666666; font-size: 12px; padding: 5px;");
+    infoLabel->setWordWrap(true);
+    infoLabel->setAlignment(Qt::AlignCenter);
+
+    // 关闭按钮
+    QPushButton *closeBtn = new QPushButton("关闭", imageDialog);
+    closeBtn->setFixedSize(100, 32);
+    closeBtn->setStyleSheet(
+        "QPushButton {"
+        "   background-color: #8c1515;"
+        "   color: white;"
+        "   border: none;"
+        "   border-radius: 5px;"
+        "   font-size: 14px;"
+        "}"
+        "QPushButton:hover {"
+        "   background-color: #a01c1c;"
+        "}"
+        );
+
+    QHBoxLayout *btnLayout = new QHBoxLayout();
+    btnLayout->addStretch();
+    btnLayout->addWidget(closeBtn);
+    btnLayout->addStretch();
+
+    layout->addWidget(imageLabel);
+    layout->addWidget(infoLabel);
+    layout->addLayout(btnLayout);
+
+    connect(closeBtn, &QPushButton::clicked, imageDialog, &QDialog::accept);
+
+    imageDialog->exec();
+    delete imageDialog;
+}
+// 复制图片到账本目录
+QString Record::copyImageToBookForRecord(const QString &imagePath, const QString &bookName)
+{
+    if (imagePath.isEmpty()) return "";
+
+    // 创建图片保存目录
+    QString imageDir = QDir::currentPath() + "/images/" + bookName;
+    QDir dir;
+    if (!dir.exists(imageDir)) {
+        dir.mkpath(imageDir);
+    }
+
+    // 生成唯一文件名
+    QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_hhmmss");
+    QString fileName = timestamp + "_" + QFileInfo(imagePath).fileName();
+    QString destPath = imageDir + "/" + fileName;
+
+    // 复制图片
+    if (QFile::copy(imagePath, destPath)) {
+        return destPath;
+    }
+
+    return "";
 }
