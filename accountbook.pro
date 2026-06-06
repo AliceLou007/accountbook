@@ -18,6 +18,7 @@ SOURCES += \
     multibookdialog.cpp \
     networkclient.cpp \
     record.cpp \
+    tagmanagerdialog.cpp \
     widget.cpp
 
 HEADERS += \
@@ -31,6 +32,7 @@ HEADERS += \
     multibookdialog.h \
     networkclient.h \
     record.h \
+    tagmanagerdialog.h \
     widget.h
 
 FORMS += widget.ui \

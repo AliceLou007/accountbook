@@ -13,9 +13,14 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QShowEvent>
+#include <QMenu>
+#include <QDebug>
 
-Record::Record(QWidget *parent) : QWidget(parent), ui(new Ui::Record) {
+Record::Record(QWidget *parent) : QWidget(parent), ui(new Ui::Record), m_currentSortType(0), m_selectedRow(-1) {
     ui->setupUi(this);
+
+    // 禁用自动连接（避免冲突）
+    // 不要在这里添加 on_sortCategory_clicked 之类的槽函数
 
     // ========== 添加红底白字抬头 ==========
     QWidget *topWidget = new QWidget(this);
@@ -26,7 +31,6 @@ Record::Record(QWidget *parent) : QWidget(parent), ui(new Ui::Record) {
         "}"
         );
     topWidget->setFixedHeight(70);
-    topWidget->setFixedWidth(700);
 
     QHBoxLayout *topLayout = new QHBoxLayout(topWidget);
     topLayout->setContentsMargins(150, 10, 50, 0);
@@ -71,14 +75,29 @@ Record::Record(QWidget *parent) : QWidget(parent), ui(new Ui::Record) {
     loadBookNames();
     loadSelectedBook();
     loadDataFromFile();
+    checkAndFixCategories();
     displayRecords();
 
-    this->setAttribute(Qt::WA_StyledBackground, true);
     updateTopbarStyle(ui->sortTime);
 
+    // 手动连接信号（避免自动连接冲突）
     connect(m_currentBookBtn, &QPushButton::clicked, this, &Record::on_currentBookBtn_clicked);
     connect(ui->sortTime, &QPushButton::clicked, this, &Record::on_sortTime_clicked);
-    connect(ui->sortCategory, &QPushButton::clicked, this, &Record::on_sortCategory_clicked);
+
+    // 关键：手动连接分类按钮的点击事件来弹出菜单
+    connect(ui->sortCategory, &QPushButton::clicked, this, [this]() {
+        qDebug() << "分类按钮被点击";
+        if (ui->sortCategory->menu()) {
+            QPoint pos = ui->sortCategory->mapToGlobal(QPoint(0, ui->sortCategory->height()));
+            qDebug() << "弹出菜单位置:" << pos;
+            ui->sortCategory->menu()->exec(pos);
+        } else {
+            qDebug() << "菜单为空！";
+        }
+    });
+
+    // 创建分类菜单
+    updateCategoryMenu();
 }
 
 Record::~Record() { delete ui; }
@@ -171,37 +190,30 @@ void Record::loadDataFromFile() {
     QString fileName = QString("%1_data.txt").arg(m_currentBookName);
     QFile file(fileName);
 
-    qDebug() << "正在从" << fileName << "加载数据";
-
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         qDebug() << "文件不存在或无法打开";
         return;
     }
 
     QTextStream in(&file);
-    int lineCount = 0;
 
     while (!in.atEnd()) {
         QString line = in.readLine();
-        lineCount++;
         if (line.trimmed().isEmpty()) continue;
 
         QStringList parts = line.split(",");
         if (parts.size() >= 6) {
             AccountItem item;
+            item.book = parts[0].trimmed();
             item.date = parts[1].trimmed();
             item.type = parts[2].trimmed();
             item.category = parts[3].trimmed();
             item.amount = parts[4].toDouble();
             item.remark = parts[5].trimmed();
             m_allRecords.append(item);
-        } else {
-            qDebug() << "行格式错误:" << line;
         }
     }
     file.close();
-
-    qDebug() << "加载了" << lineCount << "行，" << m_allRecords.size() << "条有效记录";
 }
 
 void Record::saveDataToFile() {
@@ -219,10 +231,8 @@ void Record::saveDataToFile() {
 
     QTextStream out(&file);
 
-    qDebug() << "正在保存" << m_allRecords.size() << "条记录到" << fileName;
-
     for (const auto& item : m_allRecords) {
-        out << m_currentBookName << ","
+        out << item.book << ","
             << item.date << ","
             << item.type << ","
             << item.category << ","
@@ -230,8 +240,6 @@ void Record::saveDataToFile() {
             << item.remark << "\n";
     }
     file.close();
-
-    qDebug() << "保存完成";
 }
 
 void Record::displayRecords() {
@@ -312,6 +320,7 @@ void Record::on_deleteRecord_clicked(int index)
 
     m_allRecords.removeAt(index);
     saveDataToFile();
+    emit dataChanged();
     displayRecords();
 }
 
@@ -334,21 +343,82 @@ void Record::on_editRecord_clicked(int index)
         if (ok) target.remark = newRemark.isEmpty() ? "无" : newRemark.trimmed();
 
         saveDataToFile();
+        emit dataChanged();
         displayRecords();
-        QMessageBox::information(this, "提示", "修改成功！");
     }
 }
 
 void Record::on_sortTime_clicked() {
     m_currentSortType = 0;
+    ui->sortCategory->setText("分类筛选");
     displayRecords();
     updateTopbarStyle(ui->sortTime);
 }
 
-void Record::on_sortCategory_clicked() {
+void Record::filterAndDisplayRecords(const QString &selectedCategory)
+{
     m_currentSortType = 1;
-    displayRecords();
+    ui->sortCategory->setText("分类: " + selectedCategory);
     updateTopbarStyle(ui->sortCategory);
+
+    ui->listRecords->clear();
+
+    for (int i = 0; i < m_allRecords.size(); ++i) {
+        const auto& item = m_allRecords[i];
+
+        if (item.category != selectedCategory) {
+            continue;
+        }
+
+        QString sign = (item.type == "支出") ? "-" : "+";
+        QString displayText = QString("[%1] %2 | %3 %4元 (%5)")
+                                  .arg(item.date)
+                                  .arg(item.category)
+                                  .arg(sign)
+                                  .arg(QString::number(item.amount, 'f', 2))
+                                  .arg(item.remark);
+
+        QListWidgetItem *listItem = new QListWidgetItem(ui->listRecords);
+        listItem->setSizeHint(QSize(listItem->sizeHint().width(), 45));
+
+        QWidget *rowWidget = new QWidget(this);
+        QHBoxLayout *rowLayout = new QHBoxLayout(rowWidget);
+        rowLayout->setContentsMargins(15, 0, 15, 0);
+
+        QLabel *textLabel = new QLabel(displayText, rowWidget);
+        QFont font("Microsoft YaHei", 11);
+        textLabel->setFont(font);
+        textLabel->setStyleSheet("color: black; background-color: transparent;");
+
+        rowLayout->addWidget(textLabel);
+        rowLayout->addStretch();
+
+        QPushButton *editBtn = new QPushButton("修改", rowWidget);
+        editBtn->setFixedSize(55, 26);
+        editBtn->setCursor(Qt::PointingHandCursor);
+        editBtn->setStyleSheet(
+            "QPushButton { background-color: #fcfcfc; border: 1px solid #dcdfe6; border-radius: 4px; color: #606266; font-size: 12px; }"
+            "QPushButton:hover { background-color: #ecf5ff; color: #409eff; border-color: #c6e2ff; }"
+            );
+
+        QPushButton *delBtn = new QPushButton("删除", rowWidget);
+        delBtn->setFixedSize(55, 26);
+        delBtn->setCursor(Qt::PointingHandCursor);
+        delBtn->setStyleSheet(
+            "QPushButton { background-color: #ffffff; border: 1px solid #fde2e2; border-radius: 4px; color: #f56c6c; font-size: 12px; }"
+            "QPushButton:hover { background-color: #fef0f0; color: #fff; background-color: #f56c6c; }"
+            );
+
+        rowLayout->addWidget(editBtn);
+        rowLayout->setSpacing(8);
+        rowLayout->addWidget(delBtn);
+
+        connect(editBtn, &QPushButton::clicked, this, [this, i]() { on_editRecord_clicked(i); });
+        connect(delBtn, &QPushButton::clicked, this, [this, i]() { on_deleteRecord_clicked(i); });
+
+        ui->listRecords->addItem(listItem);
+        ui->listRecords->setItemWidget(listItem, rowWidget);
+    }
 }
 
 void Record::updateTopbarStyle(QPushButton* activeBtn)
@@ -356,17 +426,8 @@ void Record::updateTopbarStyle(QPushButton* activeBtn)
     QString activeStyle = "background-color: #8c1515; color: white; border: none; font-weight: bold;";
     QString inactiveStyle = "background-color: #FFFFFF; color: #333333; border: none; font-weight: bold;";
 
-    if (ui->sortTime == activeBtn) {
-        ui->sortTime->setStyleSheet(activeStyle);
-    } else {
-        ui->sortTime->setStyleSheet(inactiveStyle);
-    }
-
-    if (ui->sortCategory == activeBtn) {
-        ui->sortCategory->setStyleSheet(activeStyle);
-    } else {
-        ui->sortCategory->setStyleSheet(inactiveStyle);
-    }
+    ui->sortTime->setStyleSheet((ui->sortTime == activeBtn) ? activeStyle : inactiveStyle);
+    ui->sortCategory->setStyleSheet((ui->sortCategory == activeBtn) ? activeStyle : inactiveStyle);
 }
 
 void Record::on_currentBookBtn_clicked()
@@ -383,33 +444,223 @@ void Record::on_currentBookBtn_clicked()
                                                  m_bookNames, m_selectedRow, false, &ok);
 
     if (ok && !selectedBook.isEmpty()) {
-        // 1. 先保存当前账本的数据
         saveDataToFile();
-        qDebug() << "已保存当前账本" << m_currentBookName;
 
-        // 2. 切换到新账本
         m_currentBookName = selectedBook;
         m_selectedRow = m_bookNames.indexOf(selectedBook);
 
-        // 3. 保存选中的账本到文件
         saveSelectedBook();
 
-        // 4. 更新按钮文字
         if (m_currentBookBtn) m_currentBookBtn->setText(m_currentBookName);
 
-        // 5. 加载新账本的数据
         loadDataFromFile();
+        checkAndFixCategories();  // 检查并修复无效标签
         displayRecords();
+        updateCategoryMenu();     // 更新分类菜单
+    }
+}
 
-        QMessageBox::information(this, "切换成功", QString("已切换到账本：%1").arg(selectedBook));
+void Record::updateCurrentBookDisplay()
+{
+    if (m_currentBookBtn) {
+        m_currentBookBtn->setText(m_currentBookName);
     }
 }
 
 void Record::showEvent(QShowEvent *event)
 {
     QWidget::showEvent(event);
-    // 每次显示窗口时，重新加载选中的账本
     loadSelectedBook();
     loadDataFromFile();
+    checkAndFixCategories();  // 检查并修复无效标签
+    updateCategoryMenu();     // 更新分类菜单
     displayRecords();
+}
+
+// ========== 标签管理相关函数 ==========
+
+void Record::updateCategoryMenu()
+{
+    qDebug() << "=== updateCategoryMenu 被调用 ===";
+
+    QStringList incomeCategories;
+    QStringList expenseCategories;
+
+    QString tagFilePath = QDir::currentPath() + "/tags.json";
+    QFile file(tagFilePath);
+    if (file.exists() && file.open(QIODevice::ReadOnly)) {
+        QByteArray data = file.readAll();
+        QJsonDocument doc = QJsonDocument::fromJson(data);
+
+        if (doc.isObject()) {
+            QJsonObject obj = doc.object();
+
+            if (obj.contains("incomeTags") && obj["incomeTags"].isArray()) {
+                QJsonArray incomeArray = obj["incomeTags"].toArray();
+                for (const QJsonValue &value : incomeArray) {
+                    if (value.isString()) {
+                        incomeCategories << value.toString();
+                    }
+                }
+            }
+
+            if (obj.contains("expenseTags") && obj["expenseTags"].isArray()) {
+                QJsonArray expenseArray = obj["expenseTags"].toArray();
+                for (const QJsonValue &value : expenseArray) {
+                    if (value.isString()) {
+                        expenseCategories << value.toString();
+                    }
+                }
+            }
+        }
+        file.close();
+    }
+
+    // 使用默认标签
+    if (incomeCategories.isEmpty()) {
+        incomeCategories = {"工资", "生活费", "奖学金", "兼职", "理财", "其他"};
+    }
+    if (expenseCategories.isEmpty()) {
+        expenseCategories = {"餐饮", "购物", "日用", "交通", "娱乐", "医疗", "其他"};
+    }
+
+    qDebug() << "收入标签:" << incomeCategories;
+    qDebug() << "支出标签:" << expenseCategories;
+
+    // 删除旧的菜单
+    if (ui->sortCategory->menu()) {
+        delete ui->sortCategory->menu();
+    }
+
+    // 创建菜单
+    QMenu *mainMenu = new QMenu(this);
+    mainMenu->setStyleSheet(
+        "QMenu {"
+        "   background-color: white;"
+        "   border: 1px solid #d0d0d0;"
+        "   padding: 5px;"
+        "}"
+        "QMenu::item {"
+        "   padding: 5px 20px;"
+        "   color: black;"
+        "}"
+        "QMenu::item:selected {"
+        "   background-color: rgba(140, 21, 21, 0.1);"
+        "   color: #8c1515;"
+        "}"
+        );
+
+    // 添加收入标签
+    QAction *incomeTitle = mainMenu->addAction("━━━ 收入 ━━━");
+    incomeTitle->setEnabled(false);
+
+    for (const QString &category : incomeCategories) {
+        QAction *act = mainMenu->addAction(category);
+        connect(act, &QAction::triggered, this, [this, category]() {
+            qDebug() << "选择了收入分类:" << category;
+            filterAndDisplayRecords(category);
+        });
+    }
+
+    mainMenu->addSeparator();
+
+    // 添加支出标签
+    QAction *expenseTitle = mainMenu->addAction("━━━ 支出 ━━━");
+    expenseTitle->setEnabled(false);
+
+    for (const QString &category : expenseCategories) {
+        QAction *act = mainMenu->addAction(category);
+        connect(act, &QAction::triggered, this, [this, category]() {
+            qDebug() << "选择了支出分类:" << category;
+            filterAndDisplayRecords(category);
+        });
+    }
+
+    mainMenu->addSeparator();
+
+    // 显示全部
+    QAction *showAllAct = mainMenu->addAction("显示全部");
+    connect(showAllAct, &QAction::triggered, this, [this]() {
+        qDebug() << "选择了显示全部";
+        on_sortTime_clicked();
+    });
+
+    // 设置菜单
+    ui->sortCategory->setMenu(mainMenu);
+    qDebug() << "菜单已设置，标签数量:" << (incomeCategories.size() + expenseCategories.size());
+}
+
+void Record::checkAndFixCategories()
+{
+    qDebug() << "=== checkAndFixCategories 被调用 ===";
+
+    QStringList validIncomeTags;
+    QStringList validExpenseTags;
+
+    QString tagFilePath = QDir::currentPath() + "/tags.json";
+    QFile file(tagFilePath);
+    if (file.exists() && file.open(QIODevice::ReadOnly)) {
+        QByteArray data = file.readAll();
+        QJsonDocument doc = QJsonDocument::fromJson(data);
+
+        if (doc.isObject()) {
+            QJsonObject obj = doc.object();
+
+            if (obj.contains("incomeTags") && obj["incomeTags"].isArray()) {
+                QJsonArray incomeArray = obj["incomeTags"].toArray();
+                for (const QJsonValue &value : incomeArray) {
+                    if (value.isString()) {
+                        validIncomeTags << value.toString();
+                    }
+                }
+            }
+
+            if (obj.contains("expenseTags") && obj["expenseTags"].isArray()) {
+                QJsonArray expenseArray = obj["expenseTags"].toArray();
+                for (const QJsonValue &value : expenseArray) {
+                    if (value.isString()) {
+                        validExpenseTags << value.toString();
+                    }
+                }
+            }
+        }
+        file.close();
+    }
+
+    // 使用默认标签
+    if (validIncomeTags.isEmpty()) {
+        validIncomeTags = {"工资", "生活费", "奖学金", "兼职", "理财", "其他"};
+    }
+    if (validExpenseTags.isEmpty()) {
+        validExpenseTags = {"餐饮", "购物", "日用", "交通", "娱乐", "医疗", "其他"};
+    }
+
+    QStringList validTags = validIncomeTags + validExpenseTags;
+    validTags.removeDuplicates();
+
+    qDebug() << "有效标签列表:" << validTags;
+
+    bool needSave = false;
+
+    // 将无效标签改为"其他"
+    for (AccountItem &item : m_allRecords) {
+        if (!validTags.contains(item.category)) {
+            qDebug() << "发现无效标签:" << item.category << "，已改为\"其他\"";
+            item.category = "其他";
+            needSave = true;
+        }
+    }
+
+    if (needSave) {
+        saveDataToFile();
+        QMessageBox::information(this, "提示", "检测到已删除的标签，相关记录已自动改为\"其他\"。");
+    } else {
+        qDebug() << "所有标签都有效，无需修改";
+    }
+}
+
+void Record::loadTagsFromFile()
+{
+    // 此函数保留供外部调用
+    updateCategoryMenu();
 }

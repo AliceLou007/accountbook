@@ -222,9 +222,9 @@ void MultiBookDialog::onConfirm()
 {
     if (m_actionType == Invite) {
         // 邀请模式：显示邀请码
-        QString msg = QString("邀请码：%1\\\\n\\\\n请将邀请码发给好友，对方可通过邀请码加入账本\"%2\"")
+        QString msg = QString("邀请码：%1\n\n请将邀请码发给好友，对方可通过邀请码加入账本\"%2\"")
                           .arg(m_inviteCode).arg(m_selectedBook);
-        QMessageBox::information(this, "邀请码", msg);
+        //QMessageBox::information(this, "邀请码", msg);
         accept();
     } else {
         // 加入模式：验证邀请码

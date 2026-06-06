@@ -43,6 +43,8 @@ private slots:
     void onEditProfile();    // 编辑个人信息
     void onChangeAvatar();   // 更换头像
     void onLogout();         // 退出登录
+protected:
+    void showEvent(QShowEvent *event) override;
 
 private:
     QPixmap getCircularAvatar(const QPixmap& source);  // 圆形裁剪函数
@@ -59,6 +61,7 @@ private:
     Manage *m_managePage;
     QString currentViewingMonth;
     QMap<QString, MonthStat> allMonthsData;
+    QString m_bookName;
 
     // 用户信息区域
     QWidget *m_userInfoWidget;   // 用户信息容器

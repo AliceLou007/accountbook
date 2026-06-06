@@ -1,7 +1,7 @@
 #ifndef ADDONE_H
 #define ADDONE_H
 
-#include <QDialog> // 改为继承 QDialog
+#include <QDialog>
 #include <string>
 #include <QStringList>
 
@@ -19,7 +19,7 @@ struct AccountRecord {
     std::string comment;
 };
 
-class AddOne : public QDialog // 确保这里是 QDialog
+class AddOne : public QDialog
 {
     Q_OBJECT
 
@@ -29,18 +29,22 @@ public:
     ~AddOne();
 
 private slots:
-    void on_buttonBox_accepted(); // 对应 OK
-    void on_buttonBox_rejected(); // 对应 Cancel
+    void on_buttonBox_accepted();
+    void on_buttonBox_rejected();
+    void onTypeChanged(const QString &type);  // 添加：类型改变时的处理
 
 private:
     QStringList getTopThreeRemarks();
-    void loadBookNames();                      // 添加：从 books.json 加载账本名称
-    void loadSelectedBook();                   // 添加：加载选中的账本
-    void updateBookRecordCount(const QString &bookName);  // 添加：更新账本记录条数
+    void loadBookNames();
+    void loadSelectedBook();
+    void updateBookRecordCount(const QString &bookName);
+    void loadCategoriesFromTags();  // 添加：从 tags.json 加载分类标签
 
 private:
     Ui::AddOne *ui;
     QString m_currentBookName;
+    QStringList m_expenseTags;  // 添加：支出标签列表
+    QStringList m_incomeTags;   // 添加：收入标签列表
 };
 
 #endif // ADDONE_H

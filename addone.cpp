@@ -43,29 +43,91 @@ AddOne::AddOne(QWidget *parent) :
     ui->comboType->addItem("支出");
     ui->comboType->addItem("收入");
 
-    // 初始化分类下拉框
-    ui->comboCategory->clear();
-    ui->comboCategory->addItems(QStringList() << "餐饮" << "购物" << "日用" << "交通" << "娱乐" << "医疗" << "其他");
+    // 初始化分类下拉框（从 tags.json 加载）
+    loadCategoriesFromTags();
 
     ui->lineEditComment->setEditable(true);
     ui->lineEditComment->clear();
     ui->lineEditComment->addItems(getTopThreeRemarks());
     ui->lineEditComment->setCurrentText("");
 
-    connect(ui->comboType, &QComboBox::currentTextChanged, this, [=](const QString &type){
-        ui->comboCategory->clear();
-        if (type == "支出") {
-            ui->comboCategory->addItems(QStringList() << "餐饮" << "购物" << "日用" << "交通" << "娱乐" << "医疗" << "其他");
-        }
-        else if (type == "收入") {
-            ui->comboCategory->addItems(QStringList() << "工资" << "生活费" << "奖学金" << "兼职" << "理财" << "其他");
-        }
-    });
+    connect(ui->comboType, &QComboBox::currentTextChanged, this, &AddOne::onTypeChanged);
 }
 
 AddOne::~AddOne()
 {
     delete ui;
+}
+
+// 从 tags.json 加载分类
+void AddOne::loadCategoriesFromTags()
+{
+    ui->comboCategory->clear();
+
+    QStringList expenseTags;
+    QStringList incomeTags;
+
+    QString tagFilePath = QDir::currentPath() + "/tags.json";
+    QFile file(tagFilePath);
+
+    if (file.exists() && file.open(QIODevice::ReadOnly)) {
+        QByteArray data = file.readAll();
+        QJsonDocument doc = QJsonDocument::fromJson(data);
+
+        if (doc.isObject()) {
+            QJsonObject obj = doc.object();
+
+            if (obj.contains("expenseTags") && obj["expenseTags"].isArray()) {
+                QJsonArray expenseArray = obj["expenseTags"].toArray();
+                for (const QJsonValue &value : expenseArray) {
+                    if (value.isString()) {
+                        expenseTags << value.toString();
+                    }
+                }
+            }
+
+            if (obj.contains("incomeTags") && obj["incomeTags"].isArray()) {
+                QJsonArray incomeArray = obj["incomeTags"].toArray();
+                for (const QJsonValue &value : incomeArray) {
+                    if (value.isString()) {
+                        incomeTags << value.toString();
+                    }
+                }
+            }
+        }
+        file.close();
+    }
+
+    // 如果读取失败，使用默认标签
+    if (expenseTags.isEmpty()) {
+        expenseTags = {"餐饮", "购物", "日用", "交通", "娱乐", "医疗", "其他"};
+    }
+    if (incomeTags.isEmpty()) {
+        incomeTags = {"工资", "生活费", "奖学金", "兼职", "理财", "其他"};
+    }
+
+    // 保存到成员变量
+    m_expenseTags = expenseTags;
+    m_incomeTags = incomeTags;
+
+    // 根据当前选择的类型显示对应的分类
+    QString currentType = ui->comboType->currentText();
+    if (currentType == "支出") {
+        ui->comboCategory->addItems(m_expenseTags);
+    } else {
+        ui->comboCategory->addItems(m_incomeTags);
+    }
+}
+
+// 类型改变时的处理
+void AddOne::onTypeChanged(const QString &type)
+{
+    ui->comboCategory->clear();
+    if (type == "支出") {
+        ui->comboCategory->addItems(m_expenseTags);
+    } else if (type == "收入") {
+        ui->comboCategory->addItems(m_incomeTags);
+    }
 }
 
 // 从 books.json 加载账本名称
@@ -280,7 +342,12 @@ QStringList AddOne::getTopThreeRemarks() {
         if (parts.size() >= 6) {
             QString remark = parts[5].trimmed();
 
-            if (!remark.isEmpty() && remark != "无" && remark != "\n" && remark != "\n") {
+            // 修复：去除末尾的 \\n
+            if (remark.endsWith("\\n")) {
+                remark.chop(1);
+            }
+
+            if (!remark.isEmpty() && remark != "无" && remark != "\\n") {
                 remarkCount[remark]++;
             }
         }

@@ -2,5 +2,8 @@
     <qresource prefix="/">
         <file>bg_balance.png</file>
         <file>side.png</file>
+        <file>income.png</file>
+        <file>outcome.png</file>
+        <file>count.png</file>
     </qresource>
 </RCC>

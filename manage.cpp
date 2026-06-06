@@ -199,7 +199,7 @@ void Manage::setupUI()
     m_currentBookBtn->setCursor(Qt::PointingHandCursor);
     m_currentBookBtn->setMinimumWidth(150);
 
-    QLabel *clickHint = new QLabel("（点击切换）", currentBookFrame);
+    QLabel *clickHint = new QLabel(currentBookFrame);
     clickHint->setStyleSheet("font-size: 11px; color: #999999; background-color: transparent;");
 
     currentBookLayout->addWidget(currentBookTitle);
@@ -214,22 +214,22 @@ void Manage::setupUI()
     manageLayout->addWidget(currentBookFrame);
     manageLayout->addSpacing(10);
     manageLayout->addWidget(m_table);
-    manageLayout->addStretch();
+
     // 在 manageLayout->addWidget(m_table); 之后添加
 
     // 添加滚动提示
-    QLabel *scrollHint = new QLabel("?? 提示：列表支持滚动，可上下滑动查看更多账本", m_managePage);
+    QLabel *scrollHint = new QLabel("提示：列表支持滚动，可上下滑动查看更多账本", m_managePage);
     scrollHint->setStyleSheet(
         "QLabel {"
-        "   font-size: 11px;"
+        "   font-size: 14px;"
         "   color: #999999;"
         "   background-color: transparent;"
-        "   padding: 5px;"
+        "   padding: 10px;"
         "}"
         );
     scrollHint->setAlignment(Qt::AlignCenter);
     manageLayout->addWidget(scrollHint);
-
+    manageLayout->addStretch();
     // ========== 创建详情页面 ==========
     m_detailPage = nullptr;
 
@@ -558,7 +558,8 @@ void Manage::onCreateBook()
 
 void Manage::onEditTags()
 {
-    QMessageBox::information(this, "标签分类设置", "点击了标签分类设置按钮\\n实际应用中应弹出标签管理对话框");
+    TagManagerDialog dialog(this);
+    dialog.exec();
 }
 
 void Manage::updateCurrentBookLabel()
@@ -594,7 +595,7 @@ void Manage::onCurrentBookClicked()
                 updateCurrentBookLabel();
                 loadAccountBooks();
                 saveSelectedBook();  // 保存选中的账本到文件
-                QMessageBox::information(this, "切换成功", QString("已切换到账本：%1").arg(selectedBook));
+                //QMessageBox::information(this, "切换成功", QString("已切换到账本：%1").arg(selectedBook));
                 break;
             }
         }
@@ -632,7 +633,7 @@ void Manage::loadAccountBooks()
         // 当前账本显示红色竖杠
         QString displayName = m_books[i].name;
         if (i == m_selectedRow) {
-            displayName = "? " + m_books[i].name;  // 红色竖杠
+            displayName = "| " + m_books[i].name;  // 红色竖杠
         }
 
         QTableWidgetItem *nameItem = new QTableWidgetItem(displayName);

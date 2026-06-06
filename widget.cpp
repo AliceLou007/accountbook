@@ -42,6 +42,10 @@ Widget::Widget(QWidget *parent)
     m_managePage = new Manage(this);
     ui->stackedWidget->insertWidget(4, m_managePage);
 
+    connect(m_recordPage, &Record::dataChanged, this, [this](){
+        updateHomeUi(currentViewingMonth); // 主页随明细页变化
+    });
+
     currentViewingMonth = QDate::currentDate().toString("yyyy-MM");
     updateHomeUi(currentViewingMonth);
     updateSidebarStyle(ui->btnHome);
@@ -163,11 +167,48 @@ Widget::~Widget()
     delete ui;
 }
 
+// 只要一显示就刷新页面
+void Widget::showEvent(QShowEvent *event)
+{
+    QWidget::showEvent(event);
+    updateHomeUi(currentViewingMonth);
+
+    qDebug() << "主窗口已显示，首页数据已自动同步刷新！";
+}
+
 void Widget::loadAndCalculateAllData()
 {
     allMonthsData.clear();
 
-    QString filePath = QCoreApplication::applicationDirPath() + "/data.txt";
+    // ================= 1. 先读取 selected_book.json 获取账本名 =================
+    QString jsonPath = QDir::currentPath() + "/selected_book.json";
+    QFile jsonFile(jsonPath);
+
+    if (jsonFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QByteArray jsonData = jsonFile.readAll();
+        jsonFile.close();
+
+        // 解析 JSON 文档
+        QJsonDocument jsonDoc = QJsonDocument::fromJson(jsonData);
+        if (!jsonDoc.isNull() && jsonDoc.isObject()) {
+            QJsonObject jsonObj = jsonDoc.object();
+            if (jsonObj.contains("selectedBookName")) {
+                // 动态更新成员变量 m_bookName
+                m_bookName = jsonObj.value("selectedBookName").toString();
+            }
+        }
+    } else {
+        qDebug() << "无法打开 selected_book.json 文件，将使用默认或当前的 m_bookName";
+    }
+
+    // 如果 JSON 读取失败且 m_bookName 为空，给一个默认值防止程序崩溃
+    if (m_bookName.isEmpty()) {
+        m_bookName = "我的账本";
+    }
+
+    QString fileName = QString("%1_data.txt").arg(m_bookName);
+    QString filePath = QDir::currentPath() + "/" + fileName;
+
     QFile file(filePath);
 
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -183,7 +224,7 @@ void Widget::loadAndCalculateAllData()
         QStringList tokens = line.split(",");
 
         if (tokens.size() >= 6) {
-            QString qBook = tokens[0];      //先写了一个死的顶一下，后面在连账本文件
+            QString qBook = tokens[0];
             QString qDate = tokens[1];
             QString qType = tokens[2];
             QString qCategory = tokens[3];

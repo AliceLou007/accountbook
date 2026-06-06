@@ -45,9 +45,9 @@
      <property name="geometry">
       <rect>
        <x>5</x>
-       <y>100</y>
+       <y>109</y>
        <width>690</width>
-       <height>200</height>
+       <height>191</height>
       </rect>
      </property>
      <property name="styleSheet">
@@ -68,7 +68,7 @@
        <rect>
         <x>60</x>
         <y>100</y>
-        <width>241</width>
+        <width>341</width>
         <height>51</height>
        </rect>
       </property>
@@ -139,9 +139,9 @@
       <property name="styleSheet">
        <string notr="true">QLabel {
     font-family: &quot;Helvetica Neue&quot;, Helvetica, Inter, Roboto, &quot;Microsoft YaHei&quot;, sans-serif;
-    font-size: 16px;         
+    font-size: 20px;         
     font-weight: 600;       
-    color: #1a1a1a;
+    color: #E82222;
 }</string>
       </property>
       <property name="text">
@@ -160,7 +160,7 @@
       <property name="styleSheet">
        <string notr="true">QLabel {
     font-family: &quot;Helvetica Neue&quot;, Helvetica, Inter, Roboto, &quot;Microsoft YaHei&quot;, sans-serif;
-    font-size: 16px;         
+    font-size: 20px;         
     font-weight: 600;       
     color: #1a1a1a;
 }</string>
@@ -181,9 +181,9 @@
       <property name="styleSheet">
        <string notr="true">QLabel {
     font-family: &quot;Helvetica Neue&quot;, Helvetica, Inter, Roboto, &quot;Microsoft YaHei&quot;, sans-serif;
-    font-size: 16px;         
+    font-size: 20px;         
     font-weight: 600;       
-    color: #1a1a1a;
+    color: #32C822;
 }</string>
       </property>
       <property name="text">
@@ -215,14 +215,14 @@
        <rect>
         <x>100</x>
         <y>30</y>
-        <width>120</width>
+        <width>161</width>
         <height>120</height>
        </rect>
       </property>
       <property name="styleSheet">
        <string notr="true">QLabel {
     font-family: &quot;Helvetica Neue&quot;, Helvetica, Inter, Roboto, &quot;Microsoft YaHei&quot;, sans-serif;
-    font-size: 16px;            
+    font-size: 20px;            
     color: #1a1a1a;
 }</string>
       </property>
@@ -242,7 +242,7 @@
       <property name="styleSheet">
        <string notr="true">QLabel {
     font-family: &quot;Helvetica Neue&quot;, Helvetica, Inter, Roboto, &quot;Microsoft YaHei&quot;, sans-serif;
-    font-size: 16px;            
+    font-size: 20px;            
     color: #1a1a1a;
 }</string>
       </property>
@@ -262,12 +262,63 @@
       <property name="styleSheet">
        <string notr="true">QLabel {
     font-family: &quot;Helvetica Neue&quot;, Helvetica, Inter, Roboto, &quot;Microsoft YaHei&quot;, sans-serif;
-    font-size: 16px;            
+    font-size: 20px;            
     color: #1a1a1a;
 }</string>
       </property>
       <property name="text">
        <string>本月共记账</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_6">
+      <property name="geometry">
+       <rect>
+        <x>28</x>
+        <y>70</y>
+        <width>51</width>
+        <height>51</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">
+border-image: url(:/income.png);
+</string>
+      </property>
+      <property name="text">
+       <string/>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_7">
+      <property name="geometry">
+       <rect>
+        <x>30</x>
+        <y>190</y>
+        <width>51</width>
+        <height>51</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">
+border-image: url(:/outcome.png);</string>
+      </property>
+      <property name="text">
+       <string/>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_8">
+      <property name="geometry">
+       <rect>
+        <x>28</x>
+        <y>300</y>
+        <width>51</width>
+        <height>51</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">border-image: url(:/count.png);</string>
+      </property>
+      <property name="text">
+       <string/>
       </property>
      </widget>
     </widget>
@@ -327,6 +378,32 @@
        <string>添加收支记录</string>
       </property>
      </widget>
+    </widget>
+    <widget class="QLabel" name="label_9">
+     <property name="geometry">
+      <rect>
+       <x>30</x>
+       <y>20</y>
+       <width>511</width>
+       <height>19</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>本月预算剩余：</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_10">
+     <property name="geometry">
+      <rect>
+       <x>30</x>
+       <y>60</y>
+       <width>311</width>
+       <height>20</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>根据预算生成消费提示</string>
+     </property>
     </widget>
    </widget>
    <widget class="QWidget" name="page_2"/>

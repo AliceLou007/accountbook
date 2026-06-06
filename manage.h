@@ -4,6 +4,7 @@
 #include <QWidget>
 #include <QTableWidget>
 #include <QPushButton>
+#include "tagmanagerdialog.h"
 #include <QStackedWidget>
 #include <QMenu>          // 添加这一行
 #include <QAction>        // 添加这一行（可选，但建议）
