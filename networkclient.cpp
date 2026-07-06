@@ -53,6 +53,11 @@ void NetworkClient::disconnectFromServer()
     }
 }
 
+bool NetworkClient::waitForConnected(int timeoutMs)
+{
+    return m_socket && (m_socket->state() == QTcpSocket::ConnectedState || m_socket->waitForConnected(timeoutMs));
+}
+
 void NetworkClient::onConnected()
 {
     qDebug() << "已连接到服务器";
@@ -107,9 +112,10 @@ void NetworkClient::processResponse(const QJsonObject& response)
     else if (action == "login_result") {
         bool success = response["success"].toBool();
         QString userName = response["userName"].toString();
+        QString userId = response["userId"].toString();
         QString message = response["message"].toString();
         if (success) {
-            m_currentUserId = userName;
+            m_currentUserId = userId.isEmpty() ? userName : userId;
         }
         emit loginResult(success, userName, message);
     }

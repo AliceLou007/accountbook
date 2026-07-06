@@ -10,6 +10,7 @@
 #include <QTextStream>
 #include <QDir>
 #include <QDebug>
+#include "userdata.h"
 
 BookDetail::BookDetail(const QString &bookName, const QString &remark, const QStringList &members, QWidget *parent)
     : QWidget(parent)
@@ -226,8 +227,7 @@ void BookDetail::loadRecords()
     double totalOutcome = 0.0;
 
     // 从真实的账本数据文件读取
-    QString fileName = QString("%1_data.txt").arg(m_bookName);
-    QString filePath = QDir::currentPath() + "/" + fileName;
+    QString filePath = UserData::recordFile(m_bookName);
     QFile file(filePath);
 
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {

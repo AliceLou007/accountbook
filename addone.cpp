@@ -14,6 +14,7 @@
 #include <QPixmap>
 #include <QHBoxLayout>
 #include <QPushButton>
+#include "userdata.h"
 
 AddOne::AddOne(QWidget *parent) :
     QDialog(parent),
@@ -80,7 +81,7 @@ QString AddOne::copyImageToBook(const QString &imagePath, const QString &bookNam
     if (imagePath.isEmpty()) return "";
 
     // 创建图片保存目录
-    QString imageDir = QDir::currentPath() + "/images/" + bookName;
+    QString imageDir = UserData::imageDir(bookName);
     QDir dir;
     if (!dir.exists(imageDir)) {
         dir.mkpath(imageDir);
@@ -107,7 +108,7 @@ void AddOne::loadCategoriesFromTags()
     QStringList expenseTags;
     QStringList incomeTags;
 
-    QString tagFilePath = QDir::currentPath() + "/tags.json";
+    QString tagFilePath = UserData::tagsFile();
     QFile file(tagFilePath);
 
     if (file.exists() && file.open(QIODevice::ReadOnly)) {
@@ -172,7 +173,7 @@ void AddOne::loadBookNames()
 {
     ui->comboBook->clear();
 
-    QString filePath = QDir::currentPath() + "/books.json";
+    QString filePath = UserData::booksFile();
     QFile file(filePath);
 
     if (!file.exists()) {
@@ -210,7 +211,7 @@ void AddOne::loadBookNames()
 // 加载选中的账本
 void AddOne::loadSelectedBook()
 {
-    QString filePath = QDir::currentPath() + "/selected_book.json";
+    QString filePath = UserData::selectedBookFile();
     QFile file(filePath);
 
     if (!file.exists()) return;
@@ -255,7 +256,7 @@ void AddOne::on_buttonBox_accepted()
 
     // 保存记录
     QString fileName = QString("%1_data.txt").arg(selectedBook);
-    QString filePath = QDir::currentPath() + "/" + fileName;
+    QString filePath = UserData::recordFile(selectedBook);
     QFile file(filePath);
 
     if (file.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
@@ -285,7 +286,7 @@ void AddOne::on_buttonBox_accepted()
 // 更新账本的记录条数
 void AddOne::updateBookRecordCount(const QString &bookName)
 {
-    QString booksFilePath = QDir::currentPath() + "/books.json";
+    QString booksFilePath = UserData::booksFile();
     QFile booksFile(booksFilePath);
 
     if (!booksFile.open(QIODevice::ReadOnly)) return;
@@ -299,8 +300,7 @@ void AddOne::updateBookRecordCount(const QString &bookName)
     QJsonArray array = doc.array();
 
     // 统计该账本的记录条数
-    QString dataFileName = QString("%1_data.txt").arg(bookName);
-    QString dataFilePath = QDir::currentPath() + "/" + dataFileName;  // 添加这一行
+    QString dataFilePath = UserData::recordFile(bookName);
     QFile dataFile(dataFilePath);
 
     int recordCount = 0;
@@ -336,8 +336,7 @@ QStringList AddOne::getTopThreeRemarks()
     QString selectedBook = ui->comboBook->currentText();
     if (selectedBook.isEmpty()) return QStringList();
 
-    QString fileName = QString("%1_data.txt").arg(selectedBook);
-    QFile file(fileName);
+    QFile file(UserData::recordFile(selectedBook));
     QMap<QString, int> remarkCount;
 
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) return QStringList();

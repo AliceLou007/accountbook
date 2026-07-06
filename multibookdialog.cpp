@@ -5,9 +5,15 @@
 #include <QGuiApplication>
 
 MultiBookDialog::MultiBookDialog(const QStringList &bookNames, QWidget *parent)
+    : MultiBookDialog(bookNames, QMap<QString, QString>(), parent)
+{
+}
+
+MultiBookDialog::MultiBookDialog(const QStringList &bookNames, const QMap<QString, QString> &inviteCodes, QWidget *parent)
     : QDialog(parent)
     , m_actionType(Invite)
     , m_bookNames(bookNames)
+    , m_inviteCodes(inviteCodes)
 {
     setupUI();
     setWindowTitle("多人账本");
@@ -212,9 +218,8 @@ void MultiBookDialog::onBookSelected(int index)
 {
     if (index >= 0 && index < m_bookNames.size()) {
         m_selectedBook = m_bookNames[index];
-        // 生成新的邀请码
-        m_inviteCode = generateInviteCode();
-        m_inviteCodeLabel->setText(m_inviteCode);
+        m_inviteCode = m_inviteCodes.value(m_selectedBook);
+        m_inviteCodeLabel->setText(m_inviteCode.isEmpty() ? "确认后生成" : m_inviteCode);
     }
 }
 
@@ -222,9 +227,6 @@ void MultiBookDialog::onConfirm()
 {
     if (m_actionType == Invite) {
         // 邀请模式：显示邀请码
-        QString msg = QString("邀请码：%1\n\n请将邀请码发给好友，对方可通过邀请码加入账本\"%2\"")
-                          .arg(m_inviteCode).arg(m_selectedBook);
-        //QMessageBox::information(this, "邀请码", msg);
         accept();
     } else {
         // 加入模式：验证邀请码
@@ -268,7 +270,7 @@ void MultiBookDialog::updateUI()
         m_bookCombo->setVisible(true);
         m_inviteCodeLabel->setVisible(true);
         m_inviteCodeEdit->setVisible(false);
-        m_hintLabel->setText("选择账本后会自动生成邀请码，发给好友即可邀请加入");
+        m_hintLabel->setText("已有多人账本会显示服务器邀请码；普通账本确认后会先创建在线账本");
 
     } else {
         // 加入模式

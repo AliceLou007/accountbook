@@ -24,6 +24,7 @@ SOURCES += \
     record.cpp \
     startdialog.cpp \
     tagmanagerdialog.cpp \
+    userdata.cpp \
     widget.cpp
 
 HEADERS += \
@@ -42,6 +43,7 @@ HEADERS += \
     record.h \
     startdialog.h \
     tagmanagerdialog.h \
+    userdata.h \
     widget.h
 
 FORMS += widget.ui \

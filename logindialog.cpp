@@ -5,6 +5,7 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QDir>
+#include "networkclient.h"
 
 LoginDialog::LoginDialog(QWidget *parent)
     : QDialog(parent)
@@ -30,10 +31,10 @@ void LoginDialog::setupUI()
     m_titleLabel->setAlignment(Qt::AlignCenter);
     m_titleLabel->setStyleSheet(
         "QLabel {"
-        "   font-size: 24px;"
+        "   font-size: 20px;"
         "   font-weight: bold;"
         "   color: #8c1515;"
-        "   padding: 10px;"
+        "   padding: 6px;"
         "}"
         );
     mainLayout->addWidget(m_titleLabel);
@@ -118,13 +119,19 @@ void LoginDialog::setupUI()
     m_registerBtn->setStyleSheet(btnStyle);
     m_switchBtn->setStyleSheet(switchBtnStyle);
 
+    mainLayout->addStretch();
+
     btnLayout->addWidget(m_loginBtn);
+    btnLayout->addWidget(m_registerBtn);
     btnLayout->addWidget(m_switchBtn);
     mainLayout->addLayout(btnLayout);
 
     // 连接信号
     connect(m_loginBtn, &QPushButton::clicked, this, &LoginDialog::onLogin);
     connect(m_registerBtn, &QPushButton::clicked, this, &LoginDialog::onRegister);
+    NetworkClient* client = NetworkClient::getInstance();
+    connect(client, &NetworkClient::loginResult, this, &LoginDialog::onLoginResult);
+    connect(client, &NetworkClient::registerResult, this, &LoginDialog::onRegisterResult);
     connect(m_switchBtn, &QPushButton::clicked, this, [this]() {
         m_isLoginMode = !m_isLoginMode;
         if (m_isLoginMode) {
@@ -237,6 +244,13 @@ void LoginDialog::showMessageBox(const QString &title, const QString &text, QMes
     msgBox.exec();
 }
 
+void LoginDialog::setButtonsEnabled(bool enabled)
+{
+    m_loginBtn->setEnabled(enabled);
+    m_registerBtn->setEnabled(enabled);
+    m_switchBtn->setEnabled(enabled);
+}
+
 void LoginDialog::onLogin()
 {
     QString userId = m_userIdEdit->text().trimmed();
@@ -244,6 +258,13 @@ void LoginDialog::onLogin()
 
     if (userId.isEmpty() || password.isEmpty()) {
         showMessageBox("提示", "请输入用户名和密码", QMessageBox::Warning);
+        return;
+    }
+
+    NetworkClient* client = NetworkClient::getInstance();
+    if (client->isConnected()) {
+        setButtonsEnabled(false);
+        client->login(userId, password);
         return;
     }
 
@@ -270,6 +291,14 @@ void LoginDialog::onRegister()
         return;
     }
 
+    NetworkClient* client = NetworkClient::getInstance();
+    if (client->isConnected()) {
+        m_pendingPassword = password;
+        setButtonsEnabled(false);
+        client->registerUser(userId, password, userId);
+        return;
+    }
+
     if (checkUserExists(userId)) {
         showMessageBox("注册失败", "用户名已存在", QMessageBox::Warning);
         return;
@@ -285,5 +314,37 @@ void LoginDialog::onRegister()
     m_registerBtn->setVisible(false);
     m_switchBtn->setText("去注册");
     m_userIdEdit->clear();
+    m_passwordEdit->clear();
+}
+
+void LoginDialog::onLoginResult(bool success, const QString &userName, const QString &message)
+{
+    Q_UNUSED(userName)
+    setButtonsEnabled(true);
+
+    if (success) {
+        accept();
+    } else {
+        showMessageBox("登录失败", message.isEmpty() ? "用户名或密码错误" : message, QMessageBox::Warning);
+    }
+}
+
+void LoginDialog::onRegisterResult(bool success, const QString &message)
+{
+    setButtonsEnabled(true);
+
+    if (!success) {
+        showMessageBox("注册失败", message.isEmpty() ? "注册失败" : message, QMessageBox::Warning);
+        return;
+    }
+
+    saveUser(m_userIdEdit->text().trimmed(), m_pendingPassword);
+    showMessageBox("注册成功", "注册成功！请登录", QMessageBox::Information);
+
+    m_isLoginMode = true;
+    m_titleLabel->setText("登录");
+    m_loginBtn->setVisible(true);
+    m_registerBtn->setVisible(false);
+    m_switchBtn->setText("去注册");
     m_passwordEdit->clear();
 }

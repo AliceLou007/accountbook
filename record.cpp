@@ -21,6 +21,7 @@
 #include <QPixmap>
 #include <QDialog>
 #include <QPushButton>
+#include "userdata.h"
 
 Record::Record(QWidget *parent) : QWidget(parent), ui(new Ui::Record), m_currentSortType(0), m_selectedRow(-1) {
     ui->setupUi(this);
@@ -101,7 +102,7 @@ Record::~Record() { delete ui; }
 void Record::loadBookNames()
 {
     m_bookNames.clear();
-    QString filePath = QDir::currentPath() + "/books.json";
+    QString filePath = UserData::booksFile();
     QFile file(filePath);
     if (!file.exists()) return;
     if (!file.open(QIODevice::ReadOnly)) return;
@@ -124,7 +125,7 @@ void Record::loadBookNames()
 
 void Record::loadSelectedBook()
 {
-    QString filePath = QDir::currentPath() + "/selected_book.json";
+    QString filePath = UserData::selectedBookFile();
     QFile file(filePath);
     if (!file.exists()) {
         m_currentBookName = "未选择";
@@ -159,7 +160,7 @@ void Record::loadSelectedBook()
 
 void Record::saveSelectedBook()
 {
-    QString filePath = QDir::currentPath() + "/selected_book.json";
+    QString filePath = UserData::selectedBookFile();
     QFile file(filePath);
 
     if (!file.open(QIODevice::WriteOnly)) {
@@ -183,8 +184,7 @@ void Record::loadDataFromFile() {
         return;
     }
 
-    QString fileName = QString("%1_data.txt").arg(m_currentBookName);
-    QFile file(fileName);
+    QFile file(UserData::recordFile(m_currentBookName));
 
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         qDebug() << "文件不存在或无法打开";
@@ -216,8 +216,7 @@ void Record::saveDataToFile() {
         return;
     }
 
-    QString fileName = QString("%1_data.txt").arg(m_currentBookName);
-    QFile file(fileName);
+    QFile file(UserData::recordFile(m_currentBookName));
 
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
         QMessageBox::critical(this, "错误", "保存到账本文件失败！");
@@ -521,7 +520,7 @@ void Record::updateCategoryMenu()
     QStringList incomeCategories;
     QStringList expenseCategories;
 
-    QString tagFilePath = QDir::currentPath() + "/tags.json";
+    QString tagFilePath = UserData::tagsFile();
     QFile file(tagFilePath);
     if (file.exists() && file.open(QIODevice::ReadOnly)) {
         QByteArray data = file.readAll();
@@ -616,7 +615,7 @@ void Record::checkAndFixCategories()
     QStringList validIncomeTags;
     QStringList validExpenseTags;
 
-    QString tagFilePath = QDir::currentPath() + "/tags.json";
+    QString tagFilePath = UserData::tagsFile();
     QFile file(tagFilePath);
     if (file.exists() && file.open(QIODevice::ReadOnly)) {
         QByteArray data = file.readAll();
@@ -768,7 +767,7 @@ QString Record::copyImageToBookForRecord(const QString &imagePath, const QString
     if (imagePath.isEmpty()) return "";
 
     // 创建图片保存目录
-    QString imageDir = QDir::currentPath() + "/images/" + bookName;
+    QString imageDir = UserData::imageDir(bookName);
     QDir dir;
     if (!dir.exists(imageDir)) {
         dir.mkpath(imageDir);

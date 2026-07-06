@@ -22,6 +22,8 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QDir>
+#include <QSet>
+#include "userdata.h"
 
 Manage::Manage(QWidget *parent)
     : QWidget(parent)
@@ -46,6 +48,10 @@ Manage::Manage(QWidget *parent)
     connect(client, &NetworkClient::memberJoined, this, &Manage::onMemberJoined);
     connect(client, &NetworkClient::memberLeft, this, &Manage::onMemberLeft);
     connect(client, &NetworkClient::newRecord, this, &Manage::onNewRecord);
+
+    if (client->isConnected() && !client->currentUserId().isEmpty()) {
+        client->getBooks();
+    }
 }
 
 Manage::~Manage()
@@ -254,7 +260,7 @@ void Manage::setupUI()
 
 void Manage::loadBooksFromFile()
 {
-    QString filePath = QDir::currentPath() + "/books.json";
+    QString filePath = UserData::booksFile();
     QFile file(filePath);
 
     if (!file.exists()) {
@@ -266,11 +272,13 @@ void Manage::loadBooksFromFile()
         defaultBook.recordCount = 0;
         defaultBook.remark = "默认账本";
         defaultBook.isDefault = true;  // 标记为默认账本
+        defaultBook.bookId = "";
+        defaultBook.inviteCode = "";
         m_books.append(defaultBook);
         saveBooksToFile();
 
         // 创建对应的数据文件
-        QString dataFileName = "我的账本_data.txt";
+        QString dataFileName = UserData::recordFile("我的账本");
         if (!QFile::exists(dataFileName)) {
             QFile dataFile(dataFileName);
             dataFile.open(QIODevice::WriteOnly);
@@ -304,6 +312,8 @@ void Manage::loadBooksFromFile()
         book.memberCount = obj["memberCount"].toInt();
         book.recordCount = obj["recordCount"].toInt();
         book.remark = obj["remark"].toString();
+        book.bookId = obj["bookId"].toString();
+        book.inviteCode = obj["inviteCode"].toString();
         book.isDefault = obj["isDefault"].toBool(false);  // 读取是否为默认账本
 
         if (book.name == "我的账本") {
@@ -322,12 +332,14 @@ void Manage::loadBooksFromFile()
         defaultBook.recordCount = 0;
         defaultBook.remark = "默认账本";
         defaultBook.isDefault = true;
+        defaultBook.bookId = "";
+        defaultBook.inviteCode = "";
         m_books.prepend(defaultBook);  // 放在最前面
 
         // 创建对应的数据文件
-        QString dataFileName = "我的账本_data.txt";
-        if (!QFile::exists(dataFileName)) {
-            QFile dataFile(dataFileName);
+            QString dataFileName = UserData::recordFile("我的账本");
+            if (!QFile::exists(dataFileName)) {
+                QFile dataFile(dataFileName);
             dataFile.open(QIODevice::WriteOnly);
             dataFile.close();
         }
@@ -338,7 +350,7 @@ void Manage::loadBooksFromFile()
 
 void Manage::saveBooksToFile()
 {
-    QString filePath = QDir::currentPath() + "/books.json";
+    QString filePath = UserData::booksFile();
     QFile file(filePath);
 
     if (!file.open(QIODevice::WriteOnly)) {
@@ -354,6 +366,8 @@ void Manage::saveBooksToFile()
         obj["memberCount"] = book.memberCount;
         obj["recordCount"] = book.recordCount;
         obj["remark"] = book.remark;
+        obj["bookId"] = book.bookId;
+        obj["inviteCode"] = book.inviteCode;
         obj["isDefault"] = book.isDefault;  // 保存是否为默认账本
         array.append(obj);
     }
@@ -365,7 +379,7 @@ void Manage::saveBooksToFile()
 
 void Manage::saveSelectedBook()
 {
-    QString filePath = QDir::currentPath() + "/selected_book.json";
+    QString filePath = UserData::selectedBookFile();
     QFile file(filePath);
 
     if (!file.open(QIODevice::WriteOnly)) {
@@ -388,7 +402,7 @@ void Manage::saveSelectedBook()
 
 void Manage::loadSelectedBook()
 {
-    QString filePath = QDir::currentPath() + "/selected_book.json";
+    QString filePath = UserData::selectedBookFile();
     QFile file(filePath);
 
     if (!file.exists()) {
@@ -531,27 +545,13 @@ void Manage::onCreateBook()
             return;
         }
 
-        BookInfo newBook;
-        newBook.name = bookName;
-        newBook.createTime = QDate::currentDate().toString("yyyy-MM-dd");
-        newBook.memberCount = 1;
-        newBook.recordCount = 0;  // 新账本记录数为0
-        newBook.remark = remark;
-
-        m_books.append(newBook);
-
-        // 创建对应的数据文件（空文件）
-        QString dataFileName = QString("%1_data.txt").arg(bookName);
-        QFile dataFile(dataFileName);
-        if (!dataFile.exists()) {
-            dataFile.open(QIODevice::WriteOnly);
-            dataFile.close();
+        NetworkClient* client = NetworkClient::getInstance();
+        if (!client->isConnected() || client->currentUserId().isEmpty()) {
+            QMessageBox::warning(this, "创建失败", "请先连接并登录多人账本服务器后再创建账本");
+            return;
         }
 
-        saveBooksToFile();
-        loadAccountBooks();  // 这会重新统计并显示
-
-        QMessageBox::information(this, "创建成功", QString("账本 \"%1\" 创建成功！").arg(bookName));
+        client->createBook(bookName, remark);
     }
 }
 
@@ -606,7 +606,7 @@ void Manage::loadAccountBooks()
 {
     // 先更新每个账本的记录条数
     for (int i = 0; i < m_books.size(); ++i) {
-        QString dataFileName = QString("%1_data.txt").arg(m_books[i].name);
+        QString dataFileName = UserData::recordFile(m_books[i].name);
         QFile dataFile(dataFileName);
 
         int recordCount = 0;
@@ -790,8 +790,8 @@ void Manage::onEditBook()
 
         // 重命名数据文件
         if (oldName != newName) {
-            QString oldDataFileName = QString("%1_data.txt").arg(oldName);
-            QString newDataFileName = QString("%1_data.txt").arg(newName);
+            QString oldDataFileName = UserData::recordFile(oldName);
+            QString newDataFileName = UserData::recordFile(newName);
             QFile::rename(oldDataFileName, newDataFileName);
         }
 
@@ -834,7 +834,7 @@ void Manage::onDeleteBook()
 
     if (reply == QMessageBox::Yes) {
         // 删除对应的数据文件
-        QString dataFileName = QString("%1_data.txt").arg(bookName);
+        QString dataFileName = UserData::recordFile(bookName);
         QFile::remove(dataFileName);
 
         bool isDeletingSelected = (m_currentRightClickRow == m_selectedRow);
@@ -869,18 +869,25 @@ void Manage::onDeleteBook()
 
 void Manage::onTableContextMenu(const QPoint &pos)
 {
-    QTableWidgetItem *item = m_table->itemAt(pos);
-    if (item) {
-        m_currentRightClickRow = item->row();
+    QPoint viewportPos = pos;
+    QTableWidgetItem *item = m_table->itemAt(viewportPos);
+    if (!item) {
+        viewportPos = m_table->viewport()->mapFrom(m_table, pos);
+        item = m_table->itemAt(viewportPos);
+    }
+
+    int row = item ? item->row() : m_table->indexAt(viewportPos).row();
+
+    if (row >= 0 && row < m_books.size()) {
+        m_currentRightClickRow = row;
 
         // 检查是否为默认账本
-        bool isDefault = m_books[m_currentRightClickRow].isDefault ||
-                         m_books[m_currentRightClickRow].name == "我的账本";
+        bool isDefault = m_books[row].isDefault || m_books[row].name == "我的账本";
 
         QMenu menu(this);
 
         if (!isDefault) {
-            QAction *editAction = menu.addAction("修改账本");
+            QAction *editAction = menu.addAction("修改账本信息");
             QAction *deleteAction = menu.addAction("删除账本");
             connect(editAction, &QAction::triggered, this, &Manage::onEditBook);
             connect(deleteAction, &QAction::triggered, this, &Manage::onDeleteBook);
@@ -890,13 +897,13 @@ void Manage::onTableContextMenu(const QPoint &pos)
         QAction *joinAction = menu.addAction("加入多人账本");
         connect(joinAction, &QAction::triggered, this, &Manage::showJoinBookDialog);
 
-        menu.exec(m_table->viewport()->mapToGlobal(pos));
+        menu.exec(m_table->viewport()->mapToGlobal(viewportPos));
     } else {
         // 在空白区域右键
         QMenu menu(this);
         QAction *joinAction = menu.addAction("加入多人账本");
         connect(joinAction, &QAction::triggered, this, &Manage::showJoinBookDialog);
-        menu.exec(m_table->viewport()->mapToGlobal(pos));
+        menu.exec(m_table->viewport()->mapToGlobal(viewportPos));
     }
 }
 // ========== 网络功能实现（只添加，不修改原有代码）==========
@@ -920,8 +927,44 @@ void Manage::onError(const QString &error)
 void Manage::onCreateBookResult(bool success, const QString &bookId, const QString &bookName, const QString &inviteCode, const QString &message)
 {
     if (success) {
+        bool exists = false;
+        for (BookInfo &book : m_books) {
+            if (book.bookId == bookId || (book.bookId.isEmpty() && book.name == bookName)) {
+                book.name = bookName;
+                book.bookId = bookId;
+                book.inviteCode = inviteCode;
+                book.createTime = QDate::currentDate().toString("yyyy-MM-dd");
+                book.memberCount = qMax(book.memberCount, 1);
+                book.isDefault = false;
+                exists = true;
+                break;
+            }
+        }
+
+        if (!exists) {
+            BookInfo newBook;
+            newBook.name = bookName;
+            newBook.bookId = bookId;
+            newBook.inviteCode = inviteCode;
+            newBook.createTime = QDate::currentDate().toString("yyyy-MM-dd");
+            newBook.memberCount = 1;
+            newBook.recordCount = 0;
+            newBook.remark = "";
+            newBook.isDefault = false;
+            m_books.append(newBook);
+        }
+
+        QFile dataFile(UserData::recordFile(bookName));
+        if (!dataFile.exists()) {
+            dataFile.open(QIODevice::WriteOnly);
+            dataFile.close();
+        }
+
+        saveBooksToFile();
+        loadAccountBooks();
+
         QMessageBox::information(this, "创建成功",
-                                 QString("多人账本 \"%1\" 创建成功！\\\\n邀请码：%2\\\\n请保存好邀请码以便他人加入")
+                                 QString("账本 \"%1\" 创建成功！\n邀请码：%2\n好友输入此邀请码即可加入")
                                      .arg(bookName).arg(inviteCode));
         NetworkClient::getInstance()->getBooks();
     } else {
@@ -945,10 +988,16 @@ void Manage::onGetBooksResult(const QJsonArray &books)
     for (const QJsonValue &value : books) {
         QJsonObject obj = value.toObject();
 
-        // 检查是否已存在
         bool exists = false;
-        for (const BookInfo &book : m_books) {
-            if (book.bookId == obj["bookId"].toString()) {
+        for (BookInfo &book : m_books) {
+            if (book.bookId == obj["bookId"].toString()
+                || (book.bookId.isEmpty() && book.name == obj["bookName"].toString())) {
+                book.name = obj["bookName"].toString();
+                book.bookId = obj["bookId"].toString();
+                book.inviteCode = obj["inviteCode"].toString();
+                book.createTime = obj["createTime"].toString();
+                book.memberCount = obj["memberCount"].toInt();
+                book.remark = obj["remark"].toString();
                 exists = true;
                 break;
             }
@@ -963,7 +1012,29 @@ void Manage::onGetBooksResult(const QJsonArray &books)
             newBook.memberCount = obj["memberCount"].toInt();
             newBook.recordCount = 0;
             newBook.remark = obj["remark"].toString();
+            newBook.isDefault = false;
             m_books.append(newBook);
+        }
+    }
+
+    QSet<QString> seenBookIds;
+    QSet<QString> seenNames;
+    for (int i = m_books.size() - 1; i >= 0; --i) {
+        const BookInfo &book = m_books[i];
+        if (!book.bookId.isEmpty()) {
+            if (seenBookIds.contains(book.bookId)) {
+                m_books.removeAt(i);
+                continue;
+            }
+            seenBookIds.insert(book.bookId);
+        }
+
+        if (!book.name.isEmpty()) {
+            if (seenNames.contains(book.name) && book.bookId.isEmpty()) {
+                m_books.removeAt(i);
+                continue;
+            }
+            seenNames.insert(book.name);
         }
     }
 
@@ -1038,45 +1109,39 @@ void Manage::onMultiBook()
         return;
     }
 
-    MultiBookDialog dialog(bookNames, this);
+    QMap<QString, QString> inviteCodes;
+    for (const BookInfo &book : m_books) {
+        inviteCodes.insert(book.name, book.inviteCode);
+    }
+
+    MultiBookDialog dialog(bookNames, inviteCodes, this);
     if (dialog.exec() == QDialog::Accepted) {
+        NetworkClient* client = NetworkClient::getInstance();
+        if (!client->isConnected()) {
+            QMessageBox::warning(this, "网络未连接", "未连接到多人账本服务器，请先启动服务器或配置服务器地址");
+            return;
+        }
+
         if (dialog.getActionType() == MultiBookDialog::Invite) {
-            // 邀请模式：显示邀请码
             QString bookName = dialog.getSelectedBook();
-            QString inviteCode = dialog.getInviteCode();
-
-            // 保存邀请码到账本信息中
-            for (int i = 0; i < m_books.size(); ++i) {
-                if (m_books[i].name == bookName) {
-                    m_books[i].inviteCode = inviteCode;
-                    break;
+            for (const BookInfo &book : m_books) {
+                if (book.name != bookName) {
+                    continue;
                 }
-            }
-            saveBooksToFile();
 
-            QMessageBox::information(this, "邀请成功",
-                                     QString("账本【%1】的邀请码是：%2\\\\n\\\\n请将邀请码发给好友").arg(bookName).arg(inviteCode));
+                if (!book.bookId.isEmpty() && !book.inviteCode.isEmpty()) {
+                    QMessageBox::information(this, "邀请成员",
+                                             QString("账本【%1】的邀请码是：%2\n\n好友输入此邀请码即可加入")
+                                                 .arg(bookName).arg(book.inviteCode));
+                    return;
+                }
+
+                QMessageBox::warning(this, "无法邀请", "这个账本还不是服务器账本。请重新创建一个账本，新的账本会直接创建为可邀请的在线账本。");
+                return;
+            }
 
         } else {
-            // 加入模式：验证邀请码并加入
-            QString inputCode = dialog.getInviteCode();
-
-            // 查找匹配的账本
-            QString foundBook;
-            for (const BookInfo &book : m_books) {
-                if (book.inviteCode == inputCode) {
-                    foundBook = book.name;
-                    break;
-                }
-            }
-
-            if (foundBook.isEmpty()) {
-                QMessageBox::warning(this, "加入失败", "邀请码无效，请检查后重试");
-            } else {
-                QMessageBox::information(this, "加入成功", QString("您已成功加入账本【%1】").arg(foundBook));
-                // 刷新账本列表
-                loadAccountBooks();
-            }
+            client->joinBook("", dialog.getInviteCode());
         }
     }
 }

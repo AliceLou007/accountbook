@@ -8,6 +8,7 @@
 #include <QComboBox>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <QMap>
 
 class MultiBookDialog : public QDialog
 {
@@ -15,6 +16,7 @@ class MultiBookDialog : public QDialog
 
 public:
     explicit MultiBookDialog(const QStringList &bookNames, QWidget *parent = nullptr);
+    explicit MultiBookDialog(const QStringList &bookNames, const QMap<QString, QString> &inviteCodes, QWidget *parent = nullptr);
 
     enum ActionType {
         Invite,      // 邀请别人
@@ -40,6 +42,7 @@ private:
     QString m_selectedBook;
     QString m_inviteCode;
     QStringList m_bookNames;
+    QMap<QString, QString> m_inviteCodes;
 
     QPushButton *m_inviteBtn;
     QPushButton *m_joinBtn;

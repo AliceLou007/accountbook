@@ -6,6 +6,7 @@
 #include <QJsonObject>
 #include <QMessageBox>
 #include <QTextStream>
+#include "userdata.h"
 
 buget::buget(QWidget *parent)
     : QWidget(parent)
@@ -23,7 +24,7 @@ buget::~buget()
 // 获取当前选中的账本
 QString buget::getCurrentBook()
 {
-    QFile f("selected_book.json");
+    QFile f(UserData::selectedBookFile());
     if (f.open(QIODevice::ReadOnly)) {
         QJsonDocument doc = QJsonDocument::fromJson(f.readAll());
         f.close();
@@ -36,7 +37,7 @@ QString buget::getCurrentBook()
 double buget::getMonthUsed(QString yearMonth)
 {
     QString book = getCurrentBook();
-    QFile f(book + "_data.txt");
+    QFile f(UserData::recordFile(book));
 
     if (!f.open(QIODevice::ReadOnly)) return 0;
 
@@ -69,7 +70,7 @@ void buget::saveMonthBudget(QString yearMonth, double budget)
     QDir().mkpath("budget");
 
     QString book = getCurrentBook();
-    QFile f("budget/" + yearMonth + "_" + book + ".json");
+    QFile f(UserData::budgetFile(yearMonth, book));
 
     if (f.open(QIODevice::WriteOnly)) {
         QJsonObject obj;
@@ -83,7 +84,7 @@ void buget::saveMonthBudget(QString yearMonth, double budget)
 double buget::loadMonthBudget(QString yearMonth)
 {
     QString book = getCurrentBook();
-    QFile f("budget/" + yearMonth + "_" + book + ".json");
+    QFile f(UserData::budgetFile(yearMonth, book));
 
     if (!f.open(QIODevice::ReadOnly)) return 0;
 

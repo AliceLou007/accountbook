@@ -28,15 +28,55 @@
 #include <QJsonArray>
 #include <QPainter>
 #include <QPainterPath>
+#include "userdata.h"
 
-Widget::Widget(QWidget *parent)
+Widget::Widget(const QString &userId, QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::Widget)
+    , m_userId(userId)
 {
     ui->setupUi(this);
 
     this->setFixedSize(950, 850);
     ui->stackedWidget->setCurrentIndex(0);
+
+    ui->label_9->setGeometry(30, 22, 86, 32);
+    ui->label_9->setAlignment(Qt::AlignCenter);
+    ui->label_9->setStyleSheet(
+        "QLabel {"
+        "   background-color: transparent;"
+        "   color: #8c1515;"
+        "   border: none;"
+        "   font-size: 14px;"
+        "   font-weight: 600;"
+        "}"
+        );
+
+    ui->lblBudgetAmount->setGeometry(128, 14, 250, 46);
+    ui->lblBudgetAmount->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    ui->lblBudgetAmount->setStyleSheet(
+        "QLabel {"
+        "   color: #1a1a1a;"
+        "   font-size: 22px;"
+        "   font-weight: 600;"
+        "   letter-spacing: 0px;"
+        "}"
+        );
+
+    ui->lblBudgetLeftAmount->setGeometry(30, 66, 650, 34);
+    ui->lblBudgetLeftAmount->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    ui->lblBudgetLeftAmount->setWordWrap(false);
+    ui->lblBudgetLeftAmount->setStyleSheet(
+        "QLabel {"
+        "   background-color: #fbf7f7;"
+        "   color: #6b4a4a;"
+        "   border: 1px solid #f0dddd;"
+        "   border-radius: 10px;"
+        "   padding-left: 14px;"
+        "   padding-right: 14px;"
+        "   font-size: 13px;"
+        "}"
+        );
 
     m_recordPage = new Record(this);
     ui->stackedWidget->insertWidget(1, m_recordPage);
@@ -200,7 +240,7 @@ void Widget::loadAndCalculateAllData()
     allMonthsData.clear();
 
     // ================= 1. 先读取 selected_book.json 获取账本名 =================
-    QString jsonPath = QDir::currentPath() + "/selected_book.json";
+    QString jsonPath = UserData::selectedBookFile();
     QFile jsonFile(jsonPath);
 
     if (jsonFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -225,8 +265,7 @@ void Widget::loadAndCalculateAllData()
         m_bookName = "我的账本";
     }
 
-    QString fileName = QString("%1_data.txt").arg(m_bookName);
-    QString filePath = QDir::currentPath() + "/" + fileName;
+    QString filePath = UserData::recordFile(m_bookName);
 
     QFile file(filePath);
 
@@ -269,27 +308,95 @@ void Widget::loadAndCalculateAllData()
 
 void Widget::updateHomeUi(const QString &yearMonth)
 {
+    // 1. 先加载基础账本数据（此函数内部会更新 m_bookName）
     loadAndCalculateAllData();
 
+    // 2. 动态读取当月预算 JSON 文件
+    double budget = 0.0;
+    QString budgetPath = UserData::budgetFile(yearMonth, m_bookName);
+    QFile budgetFile(budgetPath);
+
+    if (budgetFile.open(QIODevice::ReadOnly)) {
+        QJsonDocument doc = QJsonDocument::fromJson(budgetFile.readAll());
+        budgetFile.close();
+        budget = doc.object()["budget"].toDouble();
+    }
+
+    // 3. 如果当月没有任何记账数据
     if (!allMonthsData.contains(yearMonth)) {
         ui->lblIncomeAmount->setText("￥ 0.00");
         ui->lblOutcomeAmount->setText("￥ 0.00");
         ui->lblBalanceAmount->setText("￥ 0.00");
         ui->lblCount->setText("0 笔");
+
+        // 主页预算标签也要更新显示
+        ui->lblBudgetAmount->setText("￥ " + QString::number(budget, 'f', 2));
         return;
     }
 
+    // 4. 如果有记账数据，正常渲染主页
     const MonthStat &stat = allMonthsData[yearMonth];
 
     ui->lblIncomeAmount->setText("￥ " + QString::number(stat.income, 'f', 2));
     ui->lblOutcomeAmount->setText("￥ " + QString::number(stat.outcome, 'f', 2));
     ui->lblBalanceAmount->setText("￥ " + QString::number(stat.balance, 'f', 2));
     ui->lblCount->setText(QString::number(stat.count) + " 笔");
+
+    // 显示当月预算
+    ui->lblBudgetAmount->setText("￥ " + QString::number(budget, 'f', 2));
+
+    double budgetLeft = budget - stat.outcome;
+    double leftPercent = 0.0;
+
+    // ==================== 核心修改：精准判断预算文件是否存在 ====================
+    bool hasBudgetFile = QFile::exists(budgetPath);
+
+    // 计算剩余百分比
+    if (budget > 0) {
+        leftPercent = (budgetLeft / budget) * 100.0;
+    } else {
+        leftPercent = 0.0;
+    }
+
+    // 拼接百分比字符串
+    QString percentStr = QString::number(leftPercent, 'f', 1) + "%";
+
+    // ==================== 动态提示词与颜色控制 ====================
+    if (!hasBudgetFile) {
+        // 情况 0：预算文件不存在
+        QString hint = QString("提示：该账本（%1）当月（%2）暂无预算，请先设置预算").arg(m_bookName, yearMonth);
+        ui->lblBudgetLeftAmount->setText(hint);
+        ui->lblBudgetLeftAmount->setStyleSheet("background-color: #fff7f7; color: #9E2A2B; border: 1px solid #f1d7d7; border-radius: 10px; padding-left: 14px; padding-right: 14px; font-weight: 600; font-size: 13px;");
+    }
+    else if (budget <= 0) {
+        // 情况 0.5：文件存在，但预算额度被用户设置为了 0
+        ui->lblBudgetLeftAmount->setText("当前月预算额度为 0.00，请合理规划用度。");
+        ui->lblBudgetLeftAmount->setStyleSheet("background-color: #f8f8f8; color: #555555; border: 1px solid #eeeeee; border-radius: 10px; padding-left: 14px; padding-right: 14px; font-size: 13px;");
+    }
+    else if (leftPercent > 30.0) {
+        // 情况 1：剩余预算大于 30%（安全状态）
+        QString hint = QString("剩余预算 %1。手中有粮心中不慌，合理规划，细水长流。").arg(percentStr);
+        ui->lblBudgetLeftAmount->setText(hint);
+        ui->lblBudgetLeftAmount->setStyleSheet("background-color: #f3faf4; color: #2E7D32; border: 1px solid #d7ead9; border-radius: 10px; padding-left: 14px; padding-right: 14px; font-weight: 600; font-size: 13px;");
+    }
+    else if (leftPercent <= 30.0 && leftPercent >= 0.0) {
+        // 情况 2：剩余预算在 0% ~ 30% 之间（警告状态）
+        QString hint = QString("仅剩 %1！一粥一饭当思来处不易，预算将尽，宜克制消费。").arg(percentStr);
+        ui->lblBudgetLeftAmount->setText(hint);
+        ui->lblBudgetLeftAmount->setStyleSheet("background-color: #fff7f2; color: #D32F2F; border: 1px solid #f3d6cb; border-radius: 10px; padding-left: 14px; padding-right: 14px; font-weight: 600; font-size: 13px;");
+    }
+    else {
+        // 情况 3：已经超支（leftPercent < 0）
+        QString hint = QString("已超支 %1！用度无度，仓库已虚，请立即停止不必要支出。").arg(percentStr.remove("-"));
+        ui->lblBudgetLeftAmount->setText(hint);
+        ui->lblBudgetLeftAmount->setStyleSheet("background-color: #fff4f4; color: #9E2A2B; border: 1px solid #edcccc; border-radius: 10px; padding-left: 14px; padding-right: 14px; font-weight: 700; font-size: 13px;");
+    }
 }
 
 void Widget::on_btnHome_clicked() {
     ui->stackedWidget->setCurrentIndex(0);
     updateSidebarStyle(ui->btnHome);
+    updateHomeUi(currentViewingMonth);
 }
 void Widget::on_btnHistory_clicked() {
     ui->stackedWidget->setCurrentWidget(m_recordPage);
@@ -367,15 +474,21 @@ void Widget::updateSidebarStyle(QPushButton* activeBtn)
 
 void Widget::loadUserProfile()
 {
-    QString filePath = QDir::currentPath() + "/user_profile.json";
+    if (m_userId.isEmpty()) {
+        m_userId = "10001";
+    }
+
+    QString loginUserId = m_userId;
+    QString filePath = userProfilePath();
     QFile file(filePath);
 
     if (!file.exists()) {
-        m_userId = "10001";
-        m_userName = "未设置";
+        m_userId = loginUserId;
+        m_userName = loginUserId;
         m_userAge = 18;
         m_userGender = "保密";
         m_userSignature = "这个人很懒，什么都没写~";
+        m_userAvatar = QPixmap();
         return;
     }
 
@@ -392,11 +505,18 @@ void Widget::loadUserProfile()
     }
 
     QJsonObject obj = doc.object();
-    m_userId = obj["userId"].toString();
-    m_userName = obj["userName"].toString();
-    m_userAge = obj["userAge"].toInt();
-    m_userGender = obj["userGender"].toString();
-    m_userSignature = obj["userSignature"].toString();
+    m_userId = obj["userId"].toString(loginUserId);
+    if (m_userId.isEmpty()) {
+        m_userId = loginUserId;
+    }
+    m_userName = obj["userName"].toString(m_userId);
+    if (m_userName.isEmpty()) {
+        m_userName = m_userId;
+    }
+    m_userAge = obj["userAge"].toInt(18);
+    m_userGender = obj["userGender"].toString("保密");
+    m_userSignature = obj["userSignature"].toString("这个人很懒，什么都没写~");
+    m_userAvatar = QPixmap();
 
     // 加载头像
     QString avatarPath = obj["avatarPath"].toString();
@@ -407,7 +527,7 @@ void Widget::loadUserProfile()
 
 void Widget::saveUserProfile()
 {
-    QString filePath = QDir::currentPath() + "/user_profile.json";
+    QString filePath = userProfilePath();
     QFile file(filePath);
 
     if (!file.open(QIODevice::WriteOnly)) {
@@ -423,7 +543,7 @@ void Widget::saveUserProfile()
 
     // 保存头像路径
     if (!m_userAvatar.isNull()) {
-        QString avatarPath = QDir::currentPath() + "/avatar.png";
+        QString avatarPath = userAvatarPath();
         m_userAvatar.save(avatarPath);
         obj["avatarPath"] = avatarPath;
     }
@@ -431,6 +551,40 @@ void Widget::saveUserProfile()
     QJsonDocument doc(obj);
     file.write(doc.toJson());
     file.close();
+}
+
+QString Widget::userProfilePath() const
+{
+    QString safeUserId = m_userId;
+    if (safeUserId.isEmpty()) {
+        safeUserId = "default";
+    }
+
+    for (QChar &ch : safeUserId) {
+        if (!ch.isLetterOrNumber() && ch != '_' && ch != '-') {
+            ch = '_';
+        }
+    }
+
+    Q_UNUSED(safeUserId)
+    return UserData::profileFile();
+}
+
+QString Widget::userAvatarPath() const
+{
+    QString safeUserId = m_userId;
+    if (safeUserId.isEmpty()) {
+        safeUserId = "default";
+    }
+
+    for (QChar &ch : safeUserId) {
+        if (!ch.isLetterOrNumber() && ch != '_' && ch != '-') {
+            ch = '_';
+        }
+    }
+
+    Q_UNUSED(safeUserId)
+    return UserData::avatarFile();
 }
 
 void Widget::updateUserInfoDisplay()

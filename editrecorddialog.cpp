@@ -1,4 +1,5 @@
 #include "editrecorddialog.h"
+#include "userdata.h"
 
 EditRecordDialog::EditRecordDialog(const QString &date, const QString &type,
                                    const QString &category, double amount,
@@ -210,7 +211,7 @@ void EditRecordDialog::loadCategoriesFromTags()
     QStringList expenseTags;
     QStringList incomeTags;
 
-    QString tagFilePath = QDir::currentPath() + "/tags.json";
+    QString tagFilePath = UserData::tagsFile();
     QFile file(tagFilePath);
 
     if (file.exists() && file.open(QIODevice::ReadOnly)) {
@@ -337,7 +338,7 @@ QString EditRecordDialog::copyImageToBook(const QString &imagePath, const QStrin
     if (imagePath.isEmpty()) return "";
 
     // 创建图片保存目录
-    QString imageDir = QDir::currentPath() + "/images/" + bookName;
+    QString imageDir = UserData::imageDir(bookName);
     QDir dir;
     if (!dir.exists(imageDir)) {
         dir.mkpath(imageDir);

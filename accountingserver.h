@@ -7,7 +7,7 @@
 #include <QJsonArray>
 #include <QHash>
 #include <QStringList>
-#include <QMutex>      // 添加这行
+#include <QRecursiveMutex>
 #include <QUuid>       // 添加这行
 #include <QObject>
 
@@ -78,6 +78,7 @@ private:
     void loadDataFromFile();
 
     QString generateInviteCode();
+    QString findBookIdByInviteCode(const QString& inviteCode) const;
     bool validateUser(const QString& userId, const QString& password);
     void addUser(const QString& userId, const QString& password, const QString& userName);
 
@@ -89,7 +90,7 @@ private:
     QHash<QString, BookInfoNet> m_books;
 
     QString m_dataFile;
-    QMutex m_dataMutex;
+    QRecursiveMutex m_dataMutex;
 };
 
 #endif // ACCOUNTINGSERVER_H

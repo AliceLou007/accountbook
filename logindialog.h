@@ -21,6 +21,8 @@ public:
 private slots:
     void onLogin();
     void onRegister();
+    void onLoginResult(bool success, const QString &userName, const QString &message);
+    void onRegisterResult(bool success, const QString &message);
 
 private:
     void setupUI();
@@ -28,6 +30,7 @@ private:
     bool checkPassword(const QString &userId, const QString &password);
     void saveUser(const QString &userId, const QString &password);
     void showMessageBox(const QString &title, const QString &text, QMessageBox::Icon icon);
+    void setButtonsEnabled(bool enabled);
 
     QLineEdit *m_userIdEdit;
     QLineEdit *m_passwordEdit;
@@ -37,6 +40,7 @@ private:
     QLabel *m_titleLabel;
 
     bool m_isLoginMode;
+    QString m_pendingPassword;
 };
 
 #endif // LOGINDIALOG_H

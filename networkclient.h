@@ -16,7 +16,10 @@ public:
 
     void connectToServer(const QString& host, int port);
     void disconnectFromServer();
+    bool waitForConnected(int timeoutMs = 3000);
     bool isConnected() const { return m_socket && m_socket->state() == QTcpSocket::ConnectedState; }
+    QString currentUserId() const { return m_currentUserId; }
+    void setCurrentUserId(const QString& userId) { m_currentUserId = userId; }
 
 signals:
     void connected();

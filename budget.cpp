@@ -6,6 +6,7 @@
 #include <QJsonObject>
 #include <QMessageBox>
 #include <QTextStream>
+#include "userdata.h"
 
 Budget::Budget(QWidget *parent)
     : QWidget(parent)
@@ -18,6 +19,9 @@ Budget::Budget(QWidget *parent)
     ui->dateEdit->setCalendarPopup(false);
     ui->dateEdit->setDate(QDate::currentDate());
     connect(ui->dateEdit, &QDateEdit::dateChanged, this, &Budget::loadData);
+
+    ui->labelHint->setGeometry(20, 30, 660, 36);
+    ui->labelHint->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 
     ui->progressBar->setTextVisible(false);
     ui->progressBar->setRange(0, 100);
@@ -36,9 +40,13 @@ Budget::Budget(QWidget *parent)
         "}"
         );
     ui->labelHint->setStyleSheet(
-        "color: #9E2A2B;"          /* 配合你进度条和保存按钮的国风深红 */
-        "font-weight: bold;"       /* 加粗提示 */
-        "font-size: 13px;"         /* 稍微大一点点的字号 */
+        "background-color: #fbf7f7;"
+        "color: #6b4a4a;"
+        "border: 1px solid #f0dddd;"
+        "border-radius: 10px;"
+        "padding-left: 14px;"
+        "padding-right: 14px;"
+        "font-size: 13px;"
         );
 
     loadData();
@@ -52,7 +60,7 @@ Budget::~Budget()
 // 获取当前选中的账本
 QString Budget::getCurrentBook()
 {
-    QFile f("selected_book.json");
+    QFile f(UserData::selectedBookFile());
     if (f.open(QIODevice::ReadOnly)) {
         QJsonDocument doc = QJsonDocument::fromJson(f.readAll());
         f.close();
@@ -65,7 +73,7 @@ QString Budget::getCurrentBook()
 double Budget::getMonthUsed(QString yearMonth)
 {
     QString book = getCurrentBook();
-    QFile f(book + "_data.txt");
+    QFile f(UserData::recordFile(book));
 
     if (!f.open(QIODevice::ReadOnly)) return 0;
 
@@ -94,10 +102,8 @@ double Budget::getMonthUsed(QString yearMonth)
 
 void Budget::saveMonthBudget(QString yearMonth, double budget)
 {
-    QDir().mkpath("budget");
-
     QString book = getCurrentBook();
-    QFile f("budget/" + yearMonth + "_" + book + ".json");
+    QFile f(UserData::budgetFile(yearMonth, book));
 
     if (f.open(QIODevice::WriteOnly)) {
         QJsonObject obj;
@@ -111,7 +117,7 @@ void Budget::saveMonthBudget(QString yearMonth, double budget)
 double Budget::loadMonthBudget(QString yearMonth)
 {
     QString book = getCurrentBook();
-    QFile f("budget/" + yearMonth + "_" + book + ".json");
+    QFile f(UserData::budgetFile(yearMonth, book));
 
     if (!f.open(QIODevice::ReadOnly)) return 0;
 
@@ -127,7 +133,7 @@ void Budget::loadData()
     QString book = getCurrentBook();
 
     // 1. 精准判断文件是否存在
-    bool hasBudgetFile = QFile::exists("budget/" + ym + "_" + book + ".json");
+    bool hasBudgetFile = QFile::exists(UserData::budgetFile(ym, book));
 
     double budget = loadMonthBudget(ym);
     double used = getMonthUsed(ym);
@@ -146,12 +152,12 @@ void Budget::loadData()
 
         QString hintText = QString("提示：该账本（%1）当月（%2）暂无预算，请先设置预算").arg(book, ym);
         ui->labelHint->setText(hintText);
-        ui->labelHint->setStyleSheet("color: #9E2A2B; font-weight: bold; font-size: 13px;");
+        ui->labelHint->setStyleSheet("background-color: #fff7f7; color: #9E2A2B; border: 1px solid #f1d7d7; border-radius: 10px; padding-left: 14px; padding-right: 14px; font-weight: 600; font-size: 13px;");
     }
     else {
         QString infoText = QString("当前账本：%1  |  %2").arg(book, ym);
         ui->labelHint->setText(infoText);
-        ui->labelHint->setStyleSheet("color: #555555; font-weight: normal; font-size: 13px;");
+        ui->labelHint->setStyleSheet("background-color: #fbf7f7; color: #6b4a4a; border: 1px solid #f0dddd; border-radius: 10px; padding-left: 14px; padding-right: 14px; font-size: 13px;");
 
         // 正常计算进度条
         if (budget <= 0) {

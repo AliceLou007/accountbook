@@ -32,7 +32,7 @@ class Widget : public QWidget
     Q_OBJECT
 
 public:
-    Widget(QWidget *parent = nullptr);
+    explicit Widget(const QString &userId = QString(), QWidget *parent = nullptr);
     ~Widget();
 
 private slots:
@@ -57,6 +57,8 @@ private:
     void saveUserProfile();   // 保存用户信息
     void updateAvatarDisplay(); // 更新头像显示
     void updateUserInfoDisplay(); // 新增：更新用户信息显示（头像+姓名+性别）
+    QString userProfilePath() const;
+    QString userAvatarPath() const;
 
     Ui::Widget *ui;
     Record *m_recordPage;

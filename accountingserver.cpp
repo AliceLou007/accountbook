@@ -194,6 +194,7 @@ void AccountingServer::handleLogin(QTcpSocket* client, const QJsonObject& reques
 
         response["success"] = true;
         response["message"] = "登录成功";
+        response["userId"] = userId;
         response["userName"] = m_users[userId].userName;
 
         qDebug() << "用户登录:" << userId;
@@ -236,7 +237,9 @@ void AccountingServer::handleCreateBook(QTcpSocket* client, const QJsonObject& r
     BookInfoNet newBook;
     newBook.bookId = QString::number(QDateTime::currentMSecsSinceEpoch());
     newBook.bookName = bookName;
-    newBook.inviteCode = generateInviteCode();
+    do {
+        newBook.inviteCode = generateInviteCode();
+    } while (!findBookIdByInviteCode(newBook.inviteCode).isEmpty());
     newBook.createTime = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
     newBook.creatorId = userId;
     newBook.memberIds.append(userId);
@@ -277,9 +280,13 @@ void AccountingServer::handleJoinBook(QTcpSocket* client, const QJsonObject& req
         return;
     }
 
+    if (bookId.isEmpty()) {
+        bookId = findBookIdByInviteCode(joinCode);
+    }
+
     if (!m_books.contains(bookId)) {
         response["success"] = false;
-        response["message"] = "账本不存在";
+        response["message"] = "账本不存在或邀请码无效";
         sendResponse(client, response);
         return;
     }
@@ -695,6 +702,18 @@ QString AccountingServer::generateInviteCode()
         code.append(characters.at(index));
     }
     return code;
+}
+
+QString AccountingServer::findBookIdByInviteCode(const QString& inviteCode) const
+{
+    if (inviteCode.isEmpty()) return QString();
+
+    for (const BookInfoNet& book : m_books) {
+        if (book.inviteCode.compare(inviteCode, Qt::CaseInsensitive) == 0) {
+            return book.bookId;
+        }
+    }
+    return QString();
 }
 
 bool AccountingServer::validateUser(const QString& userId, const QString& password)

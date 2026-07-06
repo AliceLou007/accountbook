@@ -5,6 +5,7 @@
 #include <QJsonObject>
 #include <QInputDialog>
 #include <QDir>
+#include "userdata.h"
 
 TagManagerDialog::TagManagerDialog(QWidget *parent)
     : QDialog(parent)
@@ -196,7 +197,7 @@ void TagManagerDialog::initDefaultTags()
 
 void TagManagerDialog::loadTagsFromFile()
 {
-    QFile file("tags.json");
+    QFile file(UserData::tagsFile());
     if (!file.exists()) {
         initDefaultTags();
         saveTagsToFile();
@@ -258,7 +259,7 @@ void TagManagerDialog::saveTagsToFile()
     obj["incomeTags"] = incomeArray;
 
     QJsonDocument doc(obj);
-    QFile file("tags.json");
+    QFile file(UserData::tagsFile());
     if (file.open(QIODevice::WriteOnly)) {
         file.write(doc.toJson());
         file.close();
