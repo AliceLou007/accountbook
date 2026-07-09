@@ -4,7 +4,10 @@
 
 ## 演示视频
 
-https://disk.pku.edu.cn/link/AR07EC0BB115DA4B6BB62A767E1B3E5BF8
+https://disk.pku.edu.cn/link/AA4D7C132AE99F4E5096AD7B3091474410
+文件夹名：演示视频
+有效期限：永久有效
+提取码：HKi1
 
 ## 源代码地址
 
